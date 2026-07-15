@@ -55,14 +55,14 @@
   "archive": [
     {
       "id": "mrm4cvnxqf6n6",
-      "title": "[리브랜딩] 부스터 용기 70ml_final",
+      "title": "[리브랜딩] 부스터 용기 70ml",
       "url": "https://drive.google.com/open?id=1PAJ-qPTQRqlOMtzxYWWp7rr7-CnO5ZrU&usp=drive_fs",
       "project": "p-detail",
       "version": "final",
       "date": "2026-07-15",
       "tags": "패키지",
       "owner": "mrlq66cmegw7h",
-      "notes": ""
+      "notes": "국내용"
     },
     {
       "id": "mrm4ep52u4avk",
@@ -77,6 +77,6 @@
     }
   ],
   "trends": [],
-  "updatedAt": "2026-07-15T13:33:13.286Z",
+  "updatedAt": "2026-07-15T13:33:21.836Z",
   "seeded": true
 }
