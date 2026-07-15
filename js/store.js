@@ -12,7 +12,7 @@ export const todayISO = (offset = 0) => {
 
 const DEFAULT_DB = {
   tasks: [], projects: [], members: [], rituals: [], archive: [], trends: [],
-  config: {}, updatedAt: null, seeded: false
+  config: {}, guardLog: [], updatedAt: null, seeded: false
 };
 
 function loadJSON(key, fallback) {
@@ -126,6 +126,7 @@ class Store {
   /* ── 구버전 데이터 → 신규 스키마 마이그레이션 ── */
   migrate() {
     if (!this.db.config) this.db.config = {};
+    if (!Array.isArray(this.db.guardLog)) this.db.guardLog = [];
     const map = { inbox: 'req', todo: 'req', blocked: 'confirm' };
     (this.db.tasks || []).forEach(t => {
       if (map[t.status]) t.status = map[t.status];

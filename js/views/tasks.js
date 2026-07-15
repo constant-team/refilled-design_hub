@@ -70,7 +70,7 @@ export function renderTasks(main, sub = '') {
   <div class="kanban k3">${cols}</div>
   ${doneSection(tasks)}`;
 
-  $('#new-task').onclick = () => editTask(null, sub === 'requests');
+  $('#new-task').onclick = () => editTask(null, true); // 신규 기본값: 요청 업무
   main.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { filter.kind = b.dataset.kind; renderTasks(main, sub); });
   $('#f-assignee').onchange = e => { filter.assignee = e.target.value; renderTasks(main, sub); };
   $('#f-project').onchange = e => { filter.project = e.target.value; renderTasks(main, sub); };
@@ -315,8 +315,10 @@ export function editTask(id, isRequest = false, preset = {}) {
         db.projects.push(np); projectId = np.id;
       }
       const assignees = [...body.querySelectorAll('.chk input:checked')].map(c => c.value);
+      // 요청자가 입력돼 있으면 구분을 요청 업무로 자동 보정 (가드레일·알림 누락 방지)
+      const kind = v('#t-requester') ? 'request' : q('#t-kind').value;
       const data = {
-        kind: q('#t-kind').value, title: v('#t-title'), project: projectId, assignees,
+        kind, title: v('#t-title'), project: projectId, assignees,
         status: v('#t-status'), priority: v('#t-pri'), requestedAt: v('#t-reqat'),
         due: v('#t-due'), requester: v('#t-requester'), link: v('#t-link'),
         files, notes: v('#t-notes')
@@ -328,6 +330,14 @@ export function editTask(id, isRequest = false, preset = {}) {
       if (!id && data.kind === 'request') {
         // 1) 리드타임 하드 블록: 요청일→마감일 영업일 2일 미만이면 등록 불가
         if (data.due && bizDays(data.requestedAt, data.due) < MIN_LEAD_BDAYS) {
+          // 반려 기록 (월간 트래킹용) — 같은 제목·마감 조합은 하루 1회만
+          const dup = store.db.guardLog.some(g => g.title === data.title && g.due === data.due && g.at?.slice(0, 10) === todayISO());
+          if (!dup) {
+            store.db.guardLog.push({ type: 'lead_block', at: new Date().toISOString(),
+              title: data.title, requester: data.requester || '', due: data.due,
+              leadDays: bizDays(data.requestedAt, data.due) });
+            store.save();
+          }
           const box = q('#t-guard');
           box.hidden = false;
           box.className = 'guard-box hard';
@@ -355,9 +365,13 @@ export function editTask(id, isRequest = false, preset = {}) {
         // 2) 부하 소프트 블록: 같은 마감일에 미완료 업무 3건 이상이면 확인 후 등록
         if (data.due) {
           const load = dueLoad(data.due, null);
-          if (load >= OVERLOAD_LIMIT && !confirm(
-            `⚠️ ${data.due} 마감 업무가 이미 ${load}건 있어요.\n` +
-            `디자인팀 리소스가 몰리는 날이에요. 마감일을 분산하거나 사전 협의를 권장해요.\n\n그래도 이 날짜로 등록할까요?`)) return;
+          if (load >= OVERLOAD_LIMIT) {
+            if (!confirm(
+              `⚠️ ${data.due} 마감 업무가 이미 ${load}건 있어요.\n` +
+              `디자인팀 리소스가 몰리는 날이에요. 마감일을 분산하거나 사전 협의를 권장해요.\n\n그래도 이 날짜로 등록할까요?`)) return;
+            store.db.guardLog.push({ type: 'overload_proceed', at: new Date().toISOString(),
+              title: data.title, requester: data.requester || '', due: data.due, load });
+          }
         }
       }
       if (data.status === 'done') data.doneAt = (id && t.doneAt) || todayISO();
@@ -365,7 +379,17 @@ export function editTask(id, isRequest = false, preset = {}) {
       else {
         const nt = { id: uid(), createdAt: new Date().toISOString(), ...data };
         db.tasks.push(nt);
-        if (nt.kind === 'request') store.notifyNewRequest(nt); // 슬랙 알림 (웹훅 설정 시)
+        if (nt.kind === 'request') {
+          if (store.slackWebhook) {
+            store.notifyNewRequest(nt);
+            store.save(); closeModal(); toast('저장 완료 — 슬랙 채널로 알림을 보냈어요');
+            window.dispatchEvent(new Event('hashchange')); return;
+          } else {
+            store.save(); closeModal();
+            toast('저장은 됐지만 슬랙 웹훅이 없어 알림을 못 보냈어요 (설정 → 팀 알림에서 연결)', true);
+            window.dispatchEvent(new Event('hashchange')); return;
+          }
+        }
       }
       store.save(); closeModal(); toast('저장했어요');
       window.dispatchEvent(new Event('hashchange'));
