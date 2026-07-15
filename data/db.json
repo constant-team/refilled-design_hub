@@ -58,6 +58,29 @@
       "link": "",
       "files": [],
       "notes": ""
+    },
+    {
+      "id": "mrm5o7qlz4499",
+      "createdAt": "2026-07-15T14:08:36.909Z",
+      "kind": "request",
+      "title": "테스트 업무",
+      "project": "mrm51edud5lv7",
+      "assignees": [
+        "mrlq66cmegw7h"
+      ],
+      "status": "req",
+      "priority": "중간",
+      "requestedAt": "2026-07-15",
+      "due": "2026-07-29",
+      "requester": "MD팀",
+      "link": "https://www.figma.com/board/XQojqpXAkbUw5eStV6fBmM/-MD%ED%8C%80--%EC%98%AC%EB%A6%AC%EB%B8%8C%EC%98%81-%EC%97%85%EB%AC%B4%EC%9A%94%EC%B2%AD?node-id=3437-2010&t=Y2UvWyAN8WKfXfiY-4",
+      "files": [
+        {
+          "name": "0df36bf54b0a9227b4776c4e12f570a0.jpg",
+          "url": "https://raw.githubusercontent.com/geunalee-tech/refilled-design_hub/main/files/mrm5nzk3_0df36bf54b0a9227b4776c4e12f570a0.jpg"
+        }
+      ],
+      "notes": "8월 프로모션 배너/썸네일/상세페이지 업무 요청드립니다."
     }
   ],
   "projects": [
@@ -158,6 +181,6 @@
       "leadDays": 1
     }
   ],
-  "updatedAt": "2026-07-15T14:07:53.088Z",
+  "updatedAt": "2026-07-15T14:08:36.910Z",
   "seeded": true
 }
