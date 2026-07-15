@@ -145,7 +145,9 @@
     }
   ],
   "trends": [],
-  "config": {},
+  "config": {
+    "slackHookB64": "aHR0cHM6Ly9ob29rcy5zbGFjay5jb20vc2VydmljZXMvVDAxN0ExQVIxVVkvQjBCSEwwTFJUQzEvN0RNT2ViQVRGTEJoa2VzTTJXN2x1Mmxx"
+  },
   "guardLog": [
     {
       "type": "lead_block",
@@ -156,6 +158,6 @@
       "leadDays": 1
     }
   ],
-  "updatedAt": "2026-07-15T14:04:23.291Z",
+  "updatedAt": "2026-07-15T14:07:51.093Z",
   "seeded": true
 }
