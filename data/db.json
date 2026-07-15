@@ -35,24 +35,6 @@
       "link": "",
       "files": [],
       "requestedAt": "2026-07-15"
-    },
-    {
-      "id": "mrlq1v7pqj8qk",
-      "title": "프로모션 배너 요청 (7월 기획전)",
-      "project": "p-detail",
-      "status": "req",
-      "due": "2026-07-18",
-      "notes": "메인/서브 2사이즈",
-      "createdAt": "2026-07-15T06:51:20.005Z",
-      "assignees": [
-        "m-yeonwoo"
-      ],
-      "requester": "마케팅팀",
-      "kind": "request",
-      "priority": "중간",
-      "link": "",
-      "files": [],
-      "requestedAt": "2026-07-15"
     }
   ],
   "projects": [
@@ -117,6 +99,6 @@
   "rituals": [],
   "archive": [],
   "trends": [],
-  "updatedAt": "2026-07-15T13:30:25.121Z",
+  "updatedAt": "2026-07-15T13:30:27.926Z",
   "seeded": true
 }
