@@ -11,6 +11,11 @@
       "id": "mrm99uso9s0oj",
       "name": "김연우",
       "role": "디자이너"
+    },
+    {
+      "id": "mrm99z7hd9e77",
+      "name": "방민현",
+      "role": "디자이너"
     }
   ],
   "rituals": [],
@@ -18,7 +23,7 @@
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-15T15:49:25.416Z",
+  "updatedAt": "2026-07-15T15:49:31.133Z",
   "seeded": false,
   "docs": [],
   "meta": {
