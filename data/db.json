@@ -65,16 +65,7 @@
       "createdAt": "2026-07-15T15:19:44.378Z"
     }
   ],
-  "projects": [
-    {
-      "id": "mrm51edud5lv7",
-      "name": "자사몰 프로모션",
-      "color": "#8A3B5E",
-      "start": "2026-07-15",
-      "end": "2026-07-29",
-      "owner": null
-    }
-  ],
+  "projects": [],
   "members": [
     {
       "id": "mrlq66cmegw7h",
@@ -131,7 +122,7 @@
       "leadDays": 1
     }
   ],
-  "updatedAt": "2026-07-15T15:28:58.801Z",
+  "updatedAt": "2026-07-15T15:29:00.765Z",
   "seeded": true,
   "docs": [],
   "meta": {
