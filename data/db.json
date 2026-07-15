@@ -22,24 +22,6 @@
         }
       ],
       "notes": "테스트 테스트"
-    },
-    {
-      "id": "mrm52r1gwuhcd",
-      "createdAt": "2026-07-15T13:51:55.492Z",
-      "kind": "project",
-      "title": "ㅇㅇㅇ",
-      "project": "p-detail",
-      "assignees": [
-        "mrlq66cmegw7h"
-      ],
-      "status": "req",
-      "priority": "중간",
-      "requestedAt": "2026-07-15",
-      "due": "2026-07-16",
-      "requester": "",
-      "link": "",
-      "files": [],
-      "notes": ""
     }
   ],
   "projects": [
@@ -128,6 +110,6 @@
   ],
   "trends": [],
   "config": {},
-  "updatedAt": "2026-07-15T13:51:55.492Z",
+  "updatedAt": "2026-07-15T13:51:59.607Z",
   "seeded": true
 }
