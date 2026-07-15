@@ -6,6 +6,11 @@
       "id": "mrm99q11skcrl",
       "name": "이근아",
       "role": "팀장"
+    },
+    {
+      "id": "mrm99uso9s0oj",
+      "name": "김연우",
+      "role": "디자이너"
     }
   ],
   "rituals": [],
@@ -13,7 +18,7 @@
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-15T15:49:19.238Z",
+  "updatedAt": "2026-07-15T15:49:25.416Z",
   "seeded": false,
   "docs": [],
   "meta": {
