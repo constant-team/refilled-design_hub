@@ -45,6 +45,24 @@
         }
       ],
       "notes": "8월 프로모션 배너/썸네일/상세페이지 업무 요청드립니다."
+    },
+    {
+      "id": "nt_39ebd60b5762",
+      "notionId": "39ebd60b-5762-8054-9ce8-ed80603a1843",
+      "kind": "request",
+      "title": "찐 마지막 테스트입니다",
+      "project": "",
+      "assignees": [],
+      "_plannerNames": [],
+      "status": "req",
+      "priority": "🚨긴급",
+      "requester": "노션 요청",
+      "requestedAt": "2026-07-16",
+      "due": "2026-07-20",
+      "link": "https://app.notion.com/p/39ebd60b576280549ce8ed80603a1843",
+      "files": [],
+      "notes": "노션 요청 DB에서 자동 등록",
+      "createdAt": "2026-07-15T15:19:44.378Z"
     }
   ],
   "projects": [
@@ -149,6 +167,6 @@
       "leadDays": 1
     }
   ],
-  "updatedAt": "2026-07-15T15:18:59.584Z",
+  "updatedAt": "2026-07-15T15:19:44.629Z",
   "seeded": true
 }
