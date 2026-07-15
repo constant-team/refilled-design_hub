@@ -67,38 +67,6 @@
   ],
   "projects": [
     {
-      "id": "p-detail",
-      "name": "상세페이지 리뉴얼",
-      "color": "#2F6B5A",
-      "start": "2026-07-05",
-      "end": "2026-07-29",
-      "owner": "m-yeonwoo"
-    },
-    {
-      "id": "p-exo",
-      "name": "cADPR Exo 캠페인",
-      "color": "#3E6B8C",
-      "start": "2026-07-12",
-      "end": "2026-08-09",
-      "owner": "m-guena"
-    },
-    {
-      "id": "p-global",
-      "name": "해외 채널 비주얼",
-      "color": "#B97F3B",
-      "start": "2026-07-15",
-      "end": "2026-08-14",
-      "owner": "m-minhyun"
-    },
-    {
-      "id": "mrlsciyn3vyzc",
-      "name": "OY 아이래쉬 온고잉 기획세트",
-      "color": "#8A3B5E",
-      "start": "2026-07-15",
-      "end": "2026-08-05",
-      "owner": "mrlq66cmegw7h"
-    },
-    {
       "id": "mrm51edud5lv7",
       "name": "자사몰 프로모션",
       "color": "#8A3B5E",
@@ -163,7 +131,7 @@
       "leadDays": 1
     }
   ],
-  "updatedAt": "2026-07-15T15:22:09.796Z",
+  "updatedAt": "2026-07-15T15:28:58.801Z",
   "seeded": true,
   "docs": [],
   "meta": {
