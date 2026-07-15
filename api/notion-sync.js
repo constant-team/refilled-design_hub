@@ -70,8 +70,8 @@ function plain(p) {
   return '';
 }
 function people(p) {
-  const arr = p?.people || p?.created_by ? (p.people || [p.created_by]) : [];
-  return arr.map(u => u?.name || '').filter(Boolean);
+  const arr = p?.people ? p.people : (p?.created_by ? [p.created_by] : []);
+  return arr.map(u => ({ id: u?.id || '', name: u?.name || '' })).filter(u => u.id || u.name);
 }
 
 function mapTask(page) {
@@ -82,15 +82,16 @@ function mapTask(page) {
   const priority = plain(prop(props, '우선순위', 'Priority')) || '중간';
   const due = plain(prop(props, '마감일', 'Due', '마감'));
   const reqAt = plain(prop(props, '요청일', 'Created', '생성일')) || new Date().toISOString().slice(0, 10);
-  const designers = people(prop(props, '디자인 담당자', '담당자'));
-  const planners = people(prop(props, '기획자'));
-  const createdBy = page.created_by?.name || '';
-  const plannerNames = planners.length ? planners : (createdBy ? [createdBy] : []);
+  const designers = people(prop(props, '디자인 담당자', '담당자')).map(u => u.name).filter(Boolean);
+  const cb = page.created_by || {};
+  let planners = people(prop(props, '기획자'));
+  if (!planners.length && (cb.id || cb.name)) planners = [{ id: cb.id || '', name: cb.name || '' }];
+  const plannerNames = planners.map(u => u.name).filter(Boolean);
   const requester = (plannerNames[0] || '노션 요청') + (plannerNames.length > 1 ? ` 외 ${plannerNames.length - 1}` : '');
   return {
     id: 'nt_' + (page.id || Math.random().toString(36).slice(2)).replace(/-/g, '').slice(0, 12),
     notionId: page.id || null,
-    kind: 'request', title, project: '', assignees: [], _designerNames: designers, _plannerNames: plannerNames,
+    kind: 'request', title, project: '', assignees: [], _designerNames: designers, _planners: planners,
     status, priority: ['🚨긴급', '높음', '중간', '낮음', '보류'].includes(priority) ? priority : '중간',
     requester, requestedAt: reqAt, due, link: page.url || '',
     files: [], notes: '노션 요청 DB에서 자동 등록', createdAt: new Date().toISOString(),
@@ -125,13 +126,18 @@ function mentionName(name, userMap) {
   const id = userMap[name] || userMap[name?.replace(/\s/g, '')];
   return id ? `<@${id}>` : name;
 }
-async function notifySlack(hook, t, boardUrl, userMap = {}) {
+async function notifySlack(hook, t, boardUrl, userMap = {}, notionMap = {}) {
   if (!hook) return;
   // 디자인팀-CT 사용자 그룹 멘션 (SLACK_TEAM_MENTION 환경변수로 교체 가능)
   const teamMention = process.env.SLACK_TEAM_MENTION || '<!subteam^S06BYJ0KS5T|@디자인팀-ct>';
-  const requesterText = (t._plannerNames?.length
-    ? t._plannerNames.map(n => mentionName(n, userMap)).join(', ')
-    : t.requester) || '미기재';
+  // 기획자 멘션: ① 노션ID→슬랙ID 맵 ② 이름→슬랙ID 맵 ③ 이름 표기
+  const mentions = (t._planners || []).map(u => {
+    const m = notionMap[u.id];
+    if (m?.s) return `<@${m.s}>`;
+    const name = u.name || m?.n;
+    return name ? mentionName(name, userMap) : null;
+  }).filter(Boolean);
+  const requesterText = (mentions.length ? mentions.join(', ') : t.requester) || '미기재';
   const blocks = [
     { type: 'section', text: { type: 'mrkdwn', text: `:inbox_tray: 새 요청 업무가 등록됐어요 ${teamMention}` } },
     { type: 'header', text: { type: 'plain_text', text: t.title.slice(0, 148), emoji: true } },
@@ -153,8 +159,9 @@ async function notifySlack(hook, t, boardUrl, userMap = {}) {
 }
 
 export default async function handler(req, res) {
-  const { GH_TOKEN, GH_REPO, GH_BRANCH = 'main', SLACK_WEBHOOK, SYNC_SECRET, NOTION_TOKEN, SLACK_USER_MAP } = process.env;
+  const { GH_TOKEN, GH_REPO, GH_BRANCH = 'main', SLACK_WEBHOOK, SYNC_SECRET, NOTION_TOKEN, SLACK_USER_MAP, NOTION_SLACK_MAP } = process.env;
   let userMap = {}; try { userMap = JSON.parse(SLACK_USER_MAP || '{}'); } catch {}
+  let notionMap = {}; try { notionMap = JSON.parse(NOTION_SLACK_MAP || '{}'); } catch {}
   if (!GH_TOKEN || !GH_REPO) return res.status(500).json({ error: '환경변수(GH_TOKEN/GH_REPO) 미설정' });
   if (!SYNC_SECRET || req.query.key !== SYNC_SECRET) return res.status(401).json({ error: 'key 불일치' });
   if (req.method !== 'POST') return res.status(200).json({ ok: true, hint: '노션 자동화 웹훅용 엔드포인트예요' });
@@ -178,6 +185,12 @@ export default async function handler(req, res) {
     const task = mapTask(page);
     if (pageBody) task.notes = pageBody;
 
+    // 이름이 안 넘어온 기획자는 매핑표의 이름으로 보완 (허브 표시용)
+    const resolvedNames = (task._planners || []).map(u => u.name || notionMap[u.id]?.n).filter(Boolean);
+    if (resolvedNames.length) {
+      task.requester = resolvedNames[0] + (resolvedNames.length > 1 ? ` 외 ${resolvedNames.length - 1}` : '');
+    }
+
     // 내용이 비어 있는 템플릿 페이지는 미러링하지 않아요 (작성 완료 후 트리거 권장)
     if (!task.title || task.title === '(제목 없음)') {
       return res.status(200).json({ ok: true, skipped: '제목이 비어 있어 건너뛰었어요 (작성 완료 후 전송해주세요)' });
@@ -193,7 +206,7 @@ export default async function handler(req, res) {
       task.assignees = (db.members || [])
         .filter(m => task._designerNames?.some(n => n.includes(m.name) || m.name.includes(n)))
         .map(m => m.id);
-      const { _designerNames, ...clean } = task;
+      const { _designerNames, _planners, ...clean } = task;
       db.tasks = db.tasks || []; db.tasks.push(clean);
       db.updatedAt = new Date().toISOString();
       try { await ghPut(GH_REPO, GH_BRANCH, GH_TOKEN, db, sha); break; }
@@ -201,7 +214,7 @@ export default async function handler(req, res) {
     }
 
     const boardUrl = `https://${req.headers.host}/#/tasks/requests`;
-    await notifySlack(SLACK_WEBHOOK, task, boardUrl, userMap).catch(() => {});
+    await notifySlack(SLACK_WEBHOOK, task, boardUrl, userMap, notionMap).catch(() => {});
     return res.status(200).json({ ok: true, task: task.title });
   } catch (e) {
     return res.status(500).json({ error: String(e.message || e) });
