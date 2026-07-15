@@ -127,10 +127,10 @@ class Store {
       { id: 'm-minhyun', name: '민현', role: '인턴 · 해외 채널' },
     ];
     const p = [
-      { id: 'p-detail', name: '상세페이지 리뉴얼', color: '#2F6B5A', start: t(-10), end: t(14), owner: 'm-yeonwoo' },
-      { id: 'p-exo', name: 'cADPR Exo 캠페인', color: '#3E6B8C', start: t(-3), end: t(25), owner: 'm-guena' },
-      { id: 'p-global', name: '해외 채널 비주얼', color: '#B97F3B', start: t(0), end: t(30), owner: 'm-minhyun' },
-      { id: 'p-ops', name: '팀 운영 · AI 워크플로', color: '#7A5FA0', start: t(-20), end: t(40), owner: 'm-eunseo' },
+      { id: 'p-detail', name: '상세페이지 리뉴얼', color: '#0F7B5F', start: t(-10), end: t(14), owner: 'm-yeonwoo' },
+      { id: 'p-exo', name: 'cADPR Exo 캠페인', color: '#3A6EA5', start: t(-3), end: t(25), owner: 'm-guena' },
+      { id: 'p-global', name: '해외 채널 비주얼', color: '#B7791F', start: t(0), end: t(30), owner: 'm-minhyun' },
+      { id: 'p-ops', name: '팀 운영 · AI 워크플로', color: '#6B5CA5', start: t(-20), end: t(40), owner: 'm-eunseo' },
     ];
     const mk = (title, project, assignee, status, due, source, notes = '') =>
       ({ id: uid(), title, project, assignee, status, due, source, notes, createdAt: new Date().toISOString() });

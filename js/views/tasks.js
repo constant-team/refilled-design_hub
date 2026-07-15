@@ -136,7 +136,7 @@ function manageProjects() {
     </div>
   `, body => {
     body.querySelector('#p-add').onclick = () => {
-      db.projects.push({ id: uid(), name: '새 프로젝트', color: '#2F6B5A', start: todayISO(), end: todayISO(21), owner: db.members[0]?.id });
+      db.projects.push({ id: uid(), name: '새 프로젝트', color: '#0F7B5F', start: todayISO(), end: todayISO(21), owner: db.members[0]?.id });
       body.querySelector('#p-rows').innerHTML = rows(); bindDel(body);
     };
     const bindDel = b => b.querySelectorAll('.p-del').forEach(btn => btn.onclick = e => {
