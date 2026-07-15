@@ -1,6 +1,6 @@
 /* app.js — 라우터 & 부트스트랩 */
 import { store } from './store.js';
-import { $, $$ } from './ui.js';
+import { $, $$, toast } from './ui.js';
 import { renderDashboard } from './views/dashboard.js';
 import { renderTasks } from './views/tasks.js';
 import { renderRituals } from './views/rituals.js';
@@ -43,9 +43,15 @@ function syncBadge() {
     : (store.hasRemote() ? '클릭하면 최신 데이터를 다시 불러와요' : '설정에서 GitHub를 연결하면 팀 공유가 켜져요');
   b.style.cursor = store.hasRemote() ? 'pointer' : 'default';
   b.onclick = async () => {
-    if (!store.hasRemote()) return;
-    const ok = await store.pull();
-    if (ok) await store.push();
+    if (!store.hasRemote()) return toast('설정에서 GitHub 저장소·토큰을 먼저 연결해주세요', true);
+    toast('다시 동기화하는 중…');
+    await store.push();               // 충돌 시 자동 병합 후 재시도
+    if (store.status === 'error') {
+      toast(`동기화 오류: ${store.lastError || '알 수 없는 문제'} — 설정에서 토큰·저장소를 확인해주세요`, true);
+    } else {
+      await store.pull();
+      toast('동기화 완료 — 최신 데이터예요');
+    }
     window.dispatchEvent(new Event('hashchange'));
   };
 }
