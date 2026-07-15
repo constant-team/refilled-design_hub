@@ -196,10 +196,10 @@ function autoDraft() {
   const today = todayISO();
   const nextWeekEnd = todayISO(9);
   const open = store.db.tasks.filter(t => t.status !== 'done');
-  const line = t => `- ${t.title} (${store.memberName(t.assignee)}${t.due ? ', ~' + t.due.slice(5) : ''})`;
+  const line = t => `- ${t.title} (${store.assigneeNames(t)}${t.due ? ', ~' + t.due.slice(5) : ''})`;
   return {
     today: open.filter(t => t.status === 'doing' || t.due === today).map(line).join('\n'),
-    blocked: open.filter(t => t.status === 'blocked').map(t => line(t) + (t.notes ? ` — ${t.notes}` : '')).join('\n'),
+    blocked: open.filter(t => t.status === 'confirm').map(t => line(t) + (t.notes ? ` — ${t.notes}` : '')).join('\n'),
     nextWeek: open.filter(t => t.due && t.due > today && t.due <= nextWeekEnd).map(line).join('\n'),
     doneThisWeek: store.db.tasks.filter(t => t.status === 'done').slice(-8).map(line).join('\n'),
   };
@@ -217,7 +217,7 @@ function fridayForm(doc, isNew, main) {
     <div class="field"><label>날짜</label><input type="date" id="f-date" value="${doc.date}"></div></div>
     <div class="field"><label>오늘 할 일 / 진행 중</label><textarea id="f-today">${esc(d.today)}</textarea></div>
     <div class="field"><label>의사결정 포인트 <span class="muted">(자동 초안 없음 — 직접 작성)</span></label><textarea id="f-dec">${esc(d.decisions)}</textarea></div>
-    <div class="field"><label>막힌 일</label><textarea id="f-blk">${esc(d.blocked)}</textarea></div>
+    <div class="field"><label>막힌 일 · 컨펌 대기</label><textarea id="f-blk">${esc(d.blocked)}</textarea></div>
     <div class="field"><label>차주 진행 업무</label><textarea id="f-next">${esc(d.nextWeek)}</textarea></div>
     ${footBtns(isNew)}
   `, body => {

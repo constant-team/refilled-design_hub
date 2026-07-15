@@ -9,9 +9,9 @@ const taskRow = t => `
       <div class="tk-title">${esc(t.title)}</div>
       <div class="tk-meta">
         <span>${esc(store.projectName(t.project))}</span>
-        <span>${esc(store.memberName(t.assignee))}</span>
+        <span>${esc(store.assigneeNames(t))}</span>
         ${t.due ? `<span class="mono">${dday(t.due)}</span>` : ''}
-        ${t.source && t.source !== '디자인팀' ? `<span class="tag blue">${esc(t.source)}</span>` : ''}
+        ${t.kind === 'request' ? `<span class="tag blue">${esc(t.requester || '타팀')}</span>` : ''}
       </div>
     </div>
   </div>`;
@@ -22,8 +22,8 @@ export function renderDashboard(main) {
   const open = db.tasks.filter(t => t.status !== 'done');
   const todayTasks = open.filter(t => t.due === today || (t.status === 'doing' && (!t.due || t.due <= today)));
   const tomorrowTasks = open.filter(t => t.due === tomorrow);
-  const blocked = open.filter(t => t.status === 'blocked');
-  const inbox = open.filter(t => t.status === 'inbox');
+  const confirm = open.filter(t => t.status === 'confirm');
+  const requests = open.filter(t => t.kind === 'request' && t.status === 'req');
   const overdue = open.filter(t => t.due && t.due < today);
 
   // 예정 일정: 향후 7일 due 기준 그룹
@@ -56,7 +56,7 @@ export function renderDashboard(main) {
   }).join('') || '<div class="empty">프로젝트가 없어요. 업무 보드에서 추가해주세요.</div>';
 
   const assignCols = db.members.map(m => {
-    const mine = open.filter(t => t.assignee === m.id)
+    const mine = open.filter(t => (t.assignees || []).includes(m.id))
       .sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : 1);
     return `<div class="assign-col">
       <h4>${esc(m.name)} <span class="cnt">${mine.length}건</span></h4>
@@ -73,8 +73,8 @@ export function renderDashboard(main) {
     </div>
     <div class="d-stats">
       <div class="d-stat"><b>${todayTasks.length}</b><span>오늘 할 일</span></div>
-      <div class="d-stat"><b>${inbox.length}</b><span>타팀 인입</span></div>
-      <div class="d-stat ${blocked.length ? 'warn' : ''}"><b>${blocked.length}</b><span>막힌 일</span></div>
+      <div class="d-stat"><b>${requests.length}</b><span>타팀 요청</span></div>
+      <div class="d-stat ${confirm.length ? 'warn' : ''}"><b>${confirm.length}</b><span>컨펌중</span></div>
       <div class="d-stat ${overdue.length ? 'warn' : ''}"><b>${overdue.length}</b><span>기한 초과</span></div>
     </div>
   </div>
@@ -87,7 +87,7 @@ export function renderDashboard(main) {
     <div class="card"><div class="card-h"><h3>예정된 일정</h3><span class="sub">향후 7일</span></div>
       <div class="card-b">${Object.entries(upcoming).map(([d, list]) => `
         <div class="sched-day"><div class="sd-label">${fmtDate(d)} · ${dday(d)}</div>
-        ${list.map(t => `<div class="tk-title" style="font-size:12.5px;padding:2px 0">· ${esc(t.title)} <span class="muted" style="font-size:11px">${esc(store.memberName(t.assignee))}</span></div>`).join('')}</div>`).join('')
+        ${list.map(t => `<div class="tk-title" style="font-size:12.5px;padding:2px 0">· ${esc(t.title)} <span class="muted" style="font-size:11px">${esc(store.assigneeNames(t))}</span></div>`).join('')}</div>`).join('')
         || '<div class="empty">7일 내 예정 일정이 없어요</div>'}</div></div>
   </div>
 

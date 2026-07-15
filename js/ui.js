@@ -39,12 +39,12 @@ export const dday = iso => {
 };
 
 export const STATUS = {
-  inbox: { label: '인입 요청', tag: 'blue' },
-  todo: { label: '할 일', tag: 'gray' },
+  req: { label: '요청', tag: 'blue' },
   doing: { label: '진행 중', tag: '' },
-  blocked: { label: '막힘', tag: 'red' },
+  confirm: { label: '컨펌중', tag: 'amber' },
   done: { label: '완료', tag: 'gray' },
 };
+export const PRIORITY = ['🚨긴급', '높음', '중간', '낮음', '보류'];
 
 export function copyText(text, btn) {
   navigator.clipboard.writeText(text).then(() => {

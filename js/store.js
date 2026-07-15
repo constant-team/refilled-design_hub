@@ -26,6 +26,7 @@ class Store {
     this.settings = loadJSON(LS_SET, {
       userName: '', repo: '', branch: 'main', githubToken: '', anthropicKey: ''
     });
+    this.migrate();
     this.sha = null;          // GitHub 파일 sha (충돌 방지용)
     this.status = 'local';    // local | synced | syncing | error
     this.listeners = [];
@@ -70,6 +71,7 @@ class Store {
       // 최신 쪽 우선 (last-write-wins)
       if (!this.db.updatedAt || (remote.updatedAt && remote.updatedAt > this.db.updatedAt)) {
         this.db = { ...DEFAULT_DB, ...remote };
+        this.migrate();
         localStorage.setItem(LS_DB, JSON.stringify(this.db));
       }
       this.status = 'synced'; this.emit();
@@ -116,6 +118,45 @@ class Store {
   project(id) { return this.db.projects.find(p => p.id === id); }
   memberName(id) { return this.member(id)?.name || '미지정'; }
   projectName(id) { return this.project(id)?.name || '기타'; }
+  assigneeNames(t) {
+    const ids = t.assignees || (t.assignee ? [t.assignee] : []);
+    return ids.map(id => this.memberName(id)).join(', ') || '미지정';
+  }
+
+  /* ── 구버전 데이터 → 신규 스키마 마이그레이션 ── */
+  migrate() {
+    const map = { inbox: 'req', todo: 'req', blocked: 'confirm' };
+    (this.db.tasks || []).forEach(t => {
+      if (map[t.status]) t.status = map[t.status];
+      if (!t.assignees) t.assignees = t.assignee ? [t.assignee] : [];
+      delete t.assignee;
+      if (t.requester === undefined) {
+        t.requester = (t.source && t.source !== '디자인팀') ? t.source : '';
+        delete t.source;
+      }
+      if (!t.kind) t.kind = t.requester ? 'request' : 'project';
+      if (!t.priority) t.priority = '중간';
+      if (t.link === undefined) t.link = '';
+      if (!Array.isArray(t.files)) t.files = [];
+      if (!t.requestedAt) t.requestedAt = (t.createdAt || new Date().toISOString()).slice(0, 10);
+      if (t.status === 'done' && !t.doneAt) t.doneAt = t.requestedAt;
+    });
+  }
+
+  /* ── 첨부 파일 업로드: 저장소 files/ 폴더에 커밋 ── */
+  async uploadAttachment(fileName, base64) {
+    if (!this.hasRemote()) throw new Error('GitHub 연결이 필요해요 (설정에서 저장소·토큰 등록)');
+    const safe = fileName.replace(/[\/\\?%*:|"<>]/g, '_');
+    const path = `files/${Date.now().toString(36)}_${safe}`;
+    const url = `https://api.github.com/repos/${this.settings.repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}`;
+    const res = await fetch(url, {
+      method: 'PUT', headers: this.ghHeaders(),
+      body: JSON.stringify({ message: `hub: 첨부 업로드 (${this.settings.userName || 'member'})`, content: base64, branch: this.settings.branch || 'main' })
+    });
+    if (!res.ok) throw new Error('업로드 실패 ' + res.status);
+    const json = await res.json();
+    return { name: fileName, url: json.content.download_url };
+  }
 
   seedIfEmpty() {
     if (this.db.seeded || this.db.tasks.length || this.db.members.length) return;
@@ -132,16 +173,19 @@ class Store {
       { id: 'p-global', name: '해외 채널 비주얼', color: '#B7791F', start: t(0), end: t(30), owner: 'm-minhyun' },
       { id: 'p-ops', name: '팀 운영 · AI 워크플로', color: '#6B5CA5', start: t(-20), end: t(40), owner: 'm-eunseo' },
     ];
-    const mk = (title, project, assignee, status, due, source, notes = '') =>
-      ({ id: uid(), title, project, assignee, status, due, source, notes, createdAt: new Date().toISOString() });
+    const mk = (title, project, assignees, status, due, requester, notes = '', priority = '중간') =>
+      ({ id: uid(), kind: requester ? 'request' : 'project', title, project, assignees, status, due,
+         requester, priority, link: '', files: [], notes,
+         requestedAt: t(0), createdAt: new Date().toISOString(),
+         ...(status === 'done' ? { doneAt: t(-1) } : {}) });
     const tasks = [
-      mk('엑소좀 77% 인포그래픽 최종 시안', 'p-exo', 'm-guena', 'doing', t(0), '디자인팀'),
-      mk('상세페이지 성분 섹션 카피 반영', 'p-detail', 'm-yeonwoo', 'doing', t(1), '디자인팀'),
-      mk('아마존 A+ 콘텐츠 배너 3종', 'p-global', 'm-minhyun', 'todo', t(3), '디자인팀'),
-      mk('프로모션 배너 요청 (7월 기획전)', 'p-detail', 'm-yeonwoo', 'inbox', t(2), '마케팅팀', '메인/서브 2사이즈'),
-      mk('프롬프트 프리셋 v2 정리', 'p-ops', 'm-eunseo', 'todo', t(4), '디자인팀'),
-      mk('제품 촬영 원본 셀렉 컨펌 대기', 'p-exo', 'm-guena', 'blocked', t(1), '디자인팀', '상현님 컨펌 대기'),
-      mk('인스타 릴스 커버 템플릿', 'p-global', 'm-minhyun', 'done', t(-1), 'SNS팀'),
+      mk('엑소좀 77% 인포그래픽 최종 시안', 'p-exo', ['m-guena'], 'doing', t(0), ''),
+      mk('상세페이지 성분 섹션 카피 반영', 'p-detail', ['m-yeonwoo'], 'doing', t(1), ''),
+      mk('아마존 A+ 콘텐츠 배너 3종', 'p-global', ['m-minhyun'], 'req', t(3), ''),
+      mk('프로모션 배너 요청 (7월 기획전)', 'p-detail', ['m-yeonwoo', 'm-guena'], 'req', t(2), '마케팅팀 이지수', '메인/서브 2사이즈', '높음'),
+      mk('프롬프트 프리셋 v2 정리', 'p-ops', ['m-eunseo'], 'req', t(4), ''),
+      mk('제품 촬영 원본 셀렉', 'p-exo', ['m-guena'], 'confirm', t(1), '', '상현님 컨펌 대기'),
+      mk('인스타 릴스 커버 템플릿', 'p-global', ['m-minhyun'], 'done', t(-1), 'SNS팀 박서연'),
     ];
     this.db.members = m; this.db.projects = p; this.db.tasks = tasks;
     this.db.seeded = true;
