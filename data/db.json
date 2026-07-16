@@ -536,18 +536,21 @@
             "reason": ""
           }
         ],
-        "leadWeek": {},
+        "leadWeek": {
+          "mrni3yyyale7e": 1,
+          "mrni3yyyfwum1": 2
+        },
         "lagMonth": {},
         "evalNote": ""
       },
-      "mt": "2026-07-16T13:02:37.277Z"
+      "mt": "2026-07-16T13:02:45.258Z"
     }
   ],
   "archive": [],
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T13:02:37.277Z",
+  "updatedAt": "2026-07-16T13:02:45.258Z",
   "seeded": false,
   "docs": [],
   "meta": {
