@@ -548,11 +548,14 @@
           "mrni3yyygd7sq": {
             "prev": "0%",
             "cur": "20%"
+          },
+          "mrni3yyyr0dxn": {
+            "prev": "5.79%(6월)"
           }
         },
         "evalNote": ""
       },
-      "mt": "2026-07-16T13:03:12.841Z"
+      "mt": "2026-07-16T13:03:16.881Z"
     },
     {
       "id": "mrnirg0fdi35d",
@@ -576,7 +579,7 @@
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T13:03:12.841Z",
+  "updatedAt": "2026-07-16T13:03:16.881Z",
   "seeded": false,
   "docs": [],
   "meta": {
