@@ -162,6 +162,14 @@ class Store {
   migrate() {
     if (!this.db.config) this.db.config = {};
     if (!Array.isArray(this.db.guardLog)) this.db.guardLog = [];
+    // 멤버 목록이 비어 있으면 디자인팀 기본 구성으로 복구
+    if (!Array.isArray(this.db.members) || this.db.members.length === 0) {
+      this.db.members = [
+        { id: 'm-geuna', name: '이근아', role: '팀장' },
+        { id: 'm-yeonwoo', name: '김연우', role: '시니어' },
+        { id: 'm-minhyeon', name: '방민현', role: '인턴' },
+      ];
+    }
     const map = { inbox: 'req', todo: 'req', blocked: 'confirm' };
     (this.db.tasks || []).forEach(t => {
       if (map[t.status]) t.status = map[t.status];

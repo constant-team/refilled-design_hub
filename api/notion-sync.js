@@ -81,8 +81,12 @@ function mapTask(page) {
   const status = STATUS_MAP[statusKo] || 'req';
   const priority = plain(prop(props, '우선순위', 'Priority')) || '중간';
   const due = plain(prop(props, '마감일', 'Due', '마감'));
-  const rawPlan = plain(prop(props, '기획안 링크', '기획안', '링크', 'Link'));
-  const planLink = /^https?:\/\//.test(rawPlan) ? rawPlan : '';
+  const rawPlan = (plain(prop(props, '기획안 링크', '기획안', '링크', 'Link')) || '').trim();
+  // https:// 없이 입력해도 보정 (figma.com/... → https://figma.com/...)
+  const planLink = !rawPlan ? ''
+    : /^https?:\/\//i.test(rawPlan) ? rawPlan
+    : /^[\w-]+(\.[\w-]+)+([\/?#]|$)/.test(rawPlan) ? 'https://' + rawPlan
+    : '';
   const reqAt = plain(prop(props, '요청일', 'Created', '생성일')) || new Date().toISOString().slice(0, 10);
   const designers = people(prop(props, '디자인 담당자', '담당자')).map(u => u.name).filter(Boolean);
   const cb = page.created_by || {};
