@@ -473,13 +473,28 @@
         "evalNote": ""
       },
       "mt": "2026-07-16T12:44:33.610Z"
+    },
+    {
+      "id": "mrni5d7affzd4",
+      "type": "goals",
+      "date": "2026-07-04",
+      "title": "7월 1주차 가중목",
+      "author": "",
+      "createdAt": "2026-07-16T12:45:38.710Z",
+      "data": {
+        "commitments": [],
+        "leadWeek": {},
+        "lagMonth": {},
+        "evalNote": ""
+      },
+      "mt": "2026-07-16T12:45:38.710Z"
     }
   ],
   "archive": [],
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T12:44:33.611Z",
+  "updatedAt": "2026-07-16T12:45:38.710Z",
   "seeded": false,
   "docs": [],
   "meta": {
