@@ -63,7 +63,9 @@
       "kind": "request",
       "title": "[브랜디드] 범용 브랜드 소개서",
       "project": "",
-      "assignees": [],
+      "assignees": [
+        "m-yeonwoo"
+      ],
       "status": "req",
       "priority": "중간",
       "requester": "정라영",
@@ -115,7 +117,7 @@
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T05:33:51.636Z",
+  "updatedAt": "2026-07-16T05:34:13.700Z",
   "seeded": false,
   "docs": [],
   "meta": {
