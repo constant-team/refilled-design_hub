@@ -582,19 +582,94 @@
       "author": "",
       "createdAt": "2026-07-16T12:45:50.816Z",
       "data": {
+        "commitments": [
+          {
+            "id": "mrni5nul6a3xk",
+            "member": "이근아",
+            "text": "",
+            "criteria": "",
+            "leadId": "",
+            "done": false,
+            "reason": ""
+          }
+        ],
+        "leadWeek": {},
+        "lagMonth": {},
+        "evalNote": ""
+      },
+      "mt": "2026-07-16T12:45:52.509Z"
+    },
+    {
+      "id": "mrni5numsen8n",
+      "type": "goals",
+      "date": "2026-07-04",
+      "title": "7월 1주차 가중목",
+      "author": "",
+      "createdAt": "2026-07-16T12:45:52.510Z",
+      "data": {
+        "commitments": [
+          {
+            "id": "mrni5nz8tioq4",
+            "member": "이근아",
+            "text": "",
+            "criteria": "",
+            "leadId": "",
+            "done": false,
+            "reason": ""
+          }
+        ],
+        "leadWeek": {},
+        "lagMonth": {},
+        "evalNote": ""
+      },
+      "mt": "2026-07-16T12:45:52.676Z"
+    },
+    {
+      "id": "mrni5nz85drv4",
+      "type": "goals",
+      "date": "2026-07-04",
+      "title": "7월 1주차 가중목",
+      "author": "",
+      "createdAt": "2026-07-16T12:45:52.676Z",
+      "data": {
+        "commitments": [
+          {
+            "id": "mrni5o3eljm91",
+            "member": "이근아",
+            "text": "",
+            "criteria": "",
+            "leadId": "",
+            "done": false,
+            "reason": ""
+          }
+        ],
+        "leadWeek": {},
+        "lagMonth": {},
+        "evalNote": ""
+      },
+      "mt": "2026-07-16T12:45:52.826Z"
+    },
+    {
+      "id": "mrni5o3e01tgb",
+      "type": "goals",
+      "date": "2026-07-04",
+      "title": "7월 1주차 가중목",
+      "author": "",
+      "createdAt": "2026-07-16T12:45:52.826Z",
+      "data": {
         "commitments": [],
         "leadWeek": {},
         "lagMonth": {},
         "evalNote": ""
       },
-      "mt": "2026-07-16T12:45:50.816Z"
+      "mt": "2026-07-16T12:45:52.826Z"
     }
   ],
   "archive": [],
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T12:45:50.816Z",
+  "updatedAt": "2026-07-16T12:45:52.826Z",
   "seeded": false,
   "docs": [],
   "meta": {
