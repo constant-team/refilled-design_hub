@@ -1,93 +1,119 @@
-/* timeline.js — 프로젝트 타임라인 (드래그로 일정 조정 + 하위 업무 관리) */
+/* timeline.js — 프로젝트 타임라인 v31
+   일 단위 그리드 + 좌우 스크롤 캔버스 · 드래그 = 1일 = DAY_W px (정확한 마우스 추적) */
 import { store, uid, todayISO } from '../store.js';
 import { esc, toast, dday, STATUS, openModal, closeModal, $ } from '../ui.js';
 import { editTask, subTabs } from './tasks.js';
 
-const DAYS = 42; // 6주 창
-let winStart = todayISO(-7);
+const DAY_W = 30;            // 하루 = 30px
+const LAB_W = 264;           // 왼쪽 라벨 열 너비
 let expanded = new Set();
+let lastScrollX = null;      // 렌더 간 스크롤 위치 유지 (null = 오늘로 이동)
 
 const addDays = (iso, n) => {
   const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n);
   return d.toISOString().slice(0, 10);
 };
-const dayIdx = iso => Math.round((new Date(iso + 'T00:00:00') - new Date(winStart + 'T00:00:00')) / 864e5);
-const pctL = iso => dayIdx(iso) / DAYS * 100;
+const WD = ['일', '월', '화', '수', '목', '금', '토'];
 
 export function renderTimeline(main) {
   const db = store.db;
   const today = todayISO();
 
-  const scaleMarks = [];
-  for (let i = 0; i <= DAYS; i += 7) {
-    const d = addDays(winStart, i);
-    scaleMarks.push(`<span style="left:${i / DAYS * 100}%">${d.slice(5).replace('-', '/')}</span>`);
-  }
-  const todayPct = pctL(today);
-  if (todayPct >= 0 && todayPct <= 100)
-    scaleMarks.push(`<span class="g-today-lb" style="left:${todayPct}%">오늘</span>`);
+  /* ── 전체 범위: 가장 이른 시작 ~ 가장 늦은 종료 (월 단위로 스냅) ── */
+  let lo = today, hi = addDays(today, 45);
+  db.projects.forEach(p => {
+    if (p.start && p.start < lo) lo = p.start;
+    if (p.end && p.end > hi) hi = p.end;
+  });
+  db.tasks.forEach(t => { if (t.due && t.due > hi) hi = t.due; });
+  const rangeStart = lo.slice(0, 8) + '01';
+  const hiD = new Date(hi + 'T00:00:00'); hiD.setMonth(hiD.getMonth() + 1, 0); // 그 달의 말일
+  const rangeEnd = hiD.toISOString().slice(0, 10);
+  const idx = iso => Math.round((new Date(iso + 'T00:00:00') - new Date(rangeStart + 'T00:00:00')) / 864e5);
+  const totalDays = idx(rangeEnd) + 1;
+  const W = totalDays * DAY_W;
+  const px = iso => idx(iso) * DAY_W;
 
-  /* 트랙 공통 배경: 주말 음영 + 월 경계선 + 오늘 이전 딤 */
-  let deco = '';
-  for (let i = 0; i < DAYS; i++) {
-    const iso = addDays(winStart, i);
+  /* ── 헤더: 월 밴드 + 일 숫자 ── */
+  const monthCells = [], dayCells = [];
+  let mStart = 0, mLabel = '';
+  for (let i = 0; i <= totalDays; i++) {
+    const iso = i < totalDays ? addDays(rangeStart, i) : null;
+    const lb = iso ? `${+iso.slice(0, 4)}년 ${+iso.slice(5, 7)}월` : '';
+    if (lb !== mLabel) {
+      if (mLabel) monthCells.push(`<div class="t2-m" style="left:${mStart * DAY_W}px;width:${(i - mStart) * DAY_W}px">${mLabel}</div>`);
+      mStart = i; mLabel = lb;
+    }
+    if (!iso) break;
     const dow = new Date(iso + 'T00:00:00').getDay();
-    if (dow === 0 || dow === 6) deco += `<span class="g-wknd" style="left:${i / DAYS * 100}%;width:${100 / DAYS}%"></span>`;
-    if (iso.endsWith('-01')) deco += `<span class="g-month" style="left:${i / DAYS * 100}%"></span>`;
+    const cls = iso === today ? 'today' : dow === 0 ? 'sun' : dow === 6 ? 'sat' : '';
+    dayCells.push(`<div class="t2-d ${cls}" style="left:${i * DAY_W}px;width:${DAY_W}px">${iso === today ? '오늘' : +iso.slice(8)}</div>`);
   }
-  if (todayPct > 0) deco += `<span class="g-past" style="width:${Math.min(todayPct, 100)}%"></span>`;
 
-  /* 마감 임박 순 정렬 (표시 전용) */
+  /* ── 트랙 공통 배경: 주말 음영(반복 그라디언트) + 월 경계선 + 오늘 컬럼 ── */
+  const satOff = (6 - new Date(rangeStart + 'T00:00:00').getDay() + 7) % 7;
+  const wkndBg = `background-image:repeating-linear-gradient(90deg,rgba(120,120,120,.075) 0 ${2 * DAY_W}px,transparent ${2 * DAY_W}px ${7 * DAY_W}px);background-position:${satOff * DAY_W}px 0`;
+  let lines = `<span class="t2-todaycol" style="left:${px(today)}px;width:${DAY_W}px"></span><span class="t2-todayline" style="left:${px(today) + DAY_W / 2}px"></span>`;
+  for (let i = 1; i < totalDays; i++) {
+    if (addDays(rangeStart, i).endsWith('-01')) lines += `<span class="t2-mline" style="left:${i * DAY_W}px"></span>`;
+  }
+
+  /* ── 프로젝트 행 (마감 임박 순) ── */
   const projs = [...db.projects].sort((a, b) => ((a.end || '9999') < (b.end || '9999') ? -1 : 1));
 
-  const projRows = projs.map(p => {
+  const rows = projs.map(p => {
     const tasks = db.tasks.filter(t => t.project === p.id && t.status !== 'done')
       .sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : 1);
     const doneCnt = db.tasks.filter(t => t.project === p.id && t.status === 'done').length;
     const isOpen = expanded.has(p.id);
-    const rawL = pctL(p.start || today), rawR = pctL(p.end || today) + 100 / DAYS;
-    const clipL = rawL < 0, clipR = rawR > 100;
-    const l = Math.max(rawL, 0), r = Math.min(rawR, 100);
-    const remain = p.end ? dayIdx(p.end) - dayIdx(today) : null;
+    const s = p.start || today, e = p.end || today;
+    const bl = px(s), bw = (idx(e) - idx(s) + 1) * DAY_W;
+    const remain = p.end ? idx(p.end) - idx(today) : null;
     const ddCls = remain === null ? '' : remain < 0 ? 'over' : remain <= 7 ? 'warn' : '';
-    const ddTxt = p.end ? dday(p.end) : '';
+    const rangeLb = `${s.slice(5).replace('-', '/')} ~ ${e.slice(5).replace('-', '/')}`;
 
     const taskRows = isOpen ? tasks.map(t => `
-      <div class="tl-task" data-tid="${t.id}">
-        <div class="tl-tname">
+      <div class="t2-row t2-taskrow" data-tid="${t.id}">
+        <div class="t2-lab t2-tlab">
           <span class="tk-dot ${t.status}"></span>
-          <span class="tt" title="${esc(t.title)}">${esc(t.title)}</span>
-          <span class="ta">${t.due ? `<b class="td ${t.due < today && t.status !== 'done' ? 'over' : ''}">${t.due.slice(5).replace('-', '/')} · ${dday(t.due)}</b>` : ''} ${esc(store.assigneeNames(t))}</span>
+          <div class="t2-lab-main">
+            <span class="tt" title="${esc(t.title)}">${esc(t.title)}</span>
+            <span class="t2-meta">${t.due ? `<b class="td ${t.due < today ? 'over' : ''}">${t.due.slice(5).replace('-', '/')} · ${dday(t.due)}</b> · ` : ''}${esc(store.assigneeNames(t))}</span>
+          </div>
           <button class="tl-x" data-deltask="${t.id}" title="업무 삭제">✕</button>
         </div>
-        <div class="g-track tl-ttrack">
-          ${deco}
-          ${t.due ? `<div class="g-due" data-drag="due" data-tid="${t.id}" style="left:calc(${pctL(t.due)}% - 7px)" title="${t.due} · 드래그로 마감일 조정"></div><span class="g-due-lb" style="left:calc(${pctL(t.due)}% + 11px)">${t.due.slice(5).replace('-', '/')}</span>` : '<span class="tl-nodue">마감일 없음</span>'}
-          <div class="g-today" style="left:${pctL(today)}%"></div>
+        <div class="t2-canvas" style="width:${W}px;${wkndBg}">
+          ${lines}
+          ${t.due
+            ? `<div class="g-due" data-drag="due" data-tid="${t.id}" style="left:${px(t.due) + DAY_W / 2 - 7}px" title="${t.due} · 드래그로 마감일 조정"></div><span class="g-due-lb" style="left:${px(t.due) + DAY_W / 2 + 11}px">${t.due.slice(5).replace('-', '/')}</span>`
+            : '<span class="tl-nodue">마감일 없음</span>'}
         </div>
       </div>`).join('') +
-      `<div class="tl-task tl-addrow"><div class="tl-tname">
-        <button class="btn sm" data-addtask="${p.id}">+ 하위 업무 추가</button>
-        ${doneCnt ? `<span class="muted" style="font-size:11px">완료 ${doneCnt}건은 보드의 완료 아카이브에</span>` : ''}
-      </div><div></div></div>` : '';
+      `<div class="t2-row t2-addrow">
+        <div class="t2-lab"><button class="btn sm" data-addtask="${p.id}">+ 하위 업무 추가</button>
+          ${doneCnt ? `<span class="muted" style="font-size:11px">완료 ${doneCnt}건은 아카이브에</span>` : ''}</div>
+        <div class="t2-canvas" style="width:${W}px"></div>
+      </div>` : '';
 
-    return `<div class="tl-proj" data-pid="${p.id}">
-      <div class="tl-prow">
-        <div class="tl-pname">
+    return `<div class="t2-proj" data-pid="${p.id}">
+      <div class="t2-row">
+        <div class="t2-lab">
           <button class="tl-toggle ${isOpen ? 'open' : ''}" data-toggle="${p.id}">▸</button>
-          <span class="pn" title="${esc(p.name)}">${esc(p.name)}</span>
-          <span class="pm">${ddTxt ? `<b class="tl-dd ${ddCls}">${ddTxt}</b> · ` : ''}${(p.start || '').slice(5).replace('-', '/')} ~ ${(p.end || '').slice(5).replace('-', '/')} · ${esc(store.memberName(p.owner))} · ${tasks.length}건</span>
+          <div class="t2-lab-main">
+            <span class="pn2" title="${esc(p.name)}">${esc(p.name)}</span>
+            <span class="t2-meta">${p.end ? `<b class="tl-dd ${ddCls}">${dday(p.end)}</b> · ` : ''}${rangeLb} · ${esc(store.memberName(p.owner))} · ${tasks.length}건</span>
+          </div>
           <button class="tl-x" data-delproj="${p.id}" title="프로젝트 삭제">✕</button>
         </div>
-        <div class="g-track tl-ptrack">
-          ${deco}
-          <div class="g-bar tl-bar ${clipL ? 'clip-l' : ''} ${clipR ? 'clip-r' : ''}" data-drag="move" data-pid="${p.id}"
-               title="${p.start} ~ ${p.end}${ddTxt ? ` · ${ddTxt}` : ''} · 드래그로 기간 이동"
-               style="left:${l}%;width:${Math.max(2, r - l)}%;background:${p.color || 'var(--accent)'}">
+        <div class="t2-canvas" style="width:${W}px;${wkndBg}">
+          ${lines}
+          <div class="g-bar tl-bar" data-drag="move" data-pid="${p.id}"
+               title="${s} ~ ${e}${p.end ? ` · ${dday(p.end)}` : ''} · 드래그로 기간 이동"
+               style="left:${bl}px;width:${bw}px;background:${p.color || 'var(--accent)'}">
             <span class="g-h g-hl" data-drag="l" data-pid="${p.id}"></span>
+            ${bw >= 118 ? `<span class="t2-barlb">${rangeLb}</span>` : ''}
             <span class="g-h g-hr" data-drag="r" data-pid="${p.id}"></span>
           </div>
-          <div class="g-today" style="left:${pctL(today)}%"></div>
         </div>
       </div>
       ${taskRows}
@@ -99,23 +125,33 @@ export function renderTimeline(main) {
     <h1>업무 보드</h1><p>바를 드래그해 프로젝트 기간을, 마커를 드래그해 하위 업무 마감일을 조정해요.</p></div>
   ${subTabs('projects')}
   <div class="board-bar">
-    <button class="btn sm" id="tl-prev">◀ 2주</button>
-    <button class="btn sm" id="tl-today">오늘</button>
-    <button class="btn sm" id="tl-next">2주 ▶</button>
-    <span class="muted" style="font-size:11.5px;font-variant-numeric:tabular-nums">${winStart} ~ ${addDays(winStart, DAYS)}</span>
+    <button class="btn sm" id="tl-today">📍 오늘로 이동</button>
+    <span class="muted" style="font-size:11.5px;font-variant-numeric:tabular-nums">${rangeStart} ~ ${rangeEnd} · 좌우로 스크롤하세요</span>
     <span style="flex:1"></span>
     <button class="btn primary" id="tl-addproj">+ 프로젝트 추가</button>
   </div>
-  <div class="card" style="padding:16px 18px">
-    <div class="g-scale tl-scale"><div></div><div class="g-scale-track">${scaleMarks.join('')}</div></div>
-    <div id="tl-body">${projRows}</div>
-    <p class="muted" style="font-size:11px;margin-top:12px">양끝 핸들 = 시작/종료일 변경 · 바 가운데 = 기간 통째로 이동 · ▸ = 하위 업무 펼치기</p>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="t2-scroll" id="t2-scroll">
+      <div class="t2-inner" style="width:${LAB_W + W}px">
+        <div class="t2-row t2-head">
+          <div class="t2-lab t2-corner"></div>
+          <div class="t2-canvas t2-headcv" style="width:${W}px">
+            ${monthCells.join('')}
+            <div class="t2-days">${dayCells.join('')}</div>
+            <span class="t2-todayline" style="left:${px(today) + DAY_W / 2}px;top:auto;height:0"></span>
+          </div>
+        </div>
+        <div id="tl-body">${rows}</div>
+      </div>
+    </div>
+    <p class="muted" style="font-size:11px;margin:10px 16px">양끝 핸들 = 시작/종료일 변경 · 바 가운데 = 기간 통째로 이동 · ▸ = 하위 업무 펼치기 · 회색 세로줄 = 주말</p>
   </div>`;
 
-  /* ── 내비게이션 ── */
-  $('#tl-prev').onclick = () => { winStart = addDays(winStart, -14); renderTimeline(main); };
-  $('#tl-next').onclick = () => { winStart = addDays(winStart, 14); renderTimeline(main); };
-  $('#tl-today').onclick = () => { winStart = todayISO(-7); renderTimeline(main); };
+  /* ── 스크롤: 오늘 중심 (렌더 간 위치 유지) ── */
+  const sc = $('#t2-scroll');
+  sc.scrollLeft = lastScrollX === null ? Math.max(0, px(today) - DAY_W * 6) : lastScrollX;
+  sc.addEventListener('scroll', () => { lastScrollX = sc.scrollLeft; }, { passive: true });
+  $('#tl-today').onclick = () => sc.scrollTo({ left: Math.max(0, px(today) - DAY_W * 6), behavior: 'smooth' });
   $('#tl-addproj').onclick = () => addProject(main);
 
   /* ── 토글/추가/삭제 ── */
@@ -139,20 +175,18 @@ export function renderTimeline(main) {
     store.db.projects = store.db.projects.filter(x => x.id !== p.id);
     store.save(); renderTimeline(main); toast('프로젝트를 삭제했어요');
   });
-  main.querySelectorAll('.tl-tname .tt').forEach(el => el.onclick = () =>
+  main.querySelectorAll('.t2-lab .tt').forEach(el => el.onclick = () =>
     editTask(el.closest('[data-tid]').dataset.tid));
 
   bindDrag(main);
 }
 
-/* ── 드래그: 프로젝트 바(move/l/r) + 업무 마감 마커(due) ── */
+/* ── 드래그: 하루 = DAY_W px 고정이라 마우스와 1:1로 움직여요 ── */
 function bindDrag(main) {
   main.querySelectorAll('[data-drag]').forEach(el => {
     el.addEventListener('pointerdown', e => {
       e.preventDefault(); e.stopPropagation();
       const mode = el.dataset.drag;
-      const track = el.closest('.g-track');
-      const pxPerDay = track.getBoundingClientRect().width / DAYS;
       const startX = e.clientX;
       let deltaDays = 0;
 
@@ -160,21 +194,17 @@ function bindDrag(main) {
       const t = el.dataset.tid ? store.db.tasks.find(x => x.id === el.dataset.tid) : null;
       const orig = p ? { start: p.start, end: p.end } : { due: t.due };
       const bar = mode === 'due' ? el : el.closest('.tl-bar');
+      const origLeft = parseFloat(bar.style.left), origW = parseFloat(bar.style.width || 0);
       bar.classList.add('dragging');
       el.setPointerCapture(e.pointerId);
 
       const onMove = ev => {
-        deltaDays = Math.round((ev.clientX - startX) / pxPerDay);
-        if (mode === 'due') {
-          bar.style.left = `calc(${pctL(addDays(orig.due, deltaDays))}% - 7px)`;
-        } else {
-          let s = orig.start, en = orig.end;
-          if (mode === 'move') { s = addDays(s, deltaDays); en = addDays(en, deltaDays); }
-          if (mode === 'l') { s = addDays(s, deltaDays); if (s > en) s = en; }
-          if (mode === 'r') { en = addDays(en, deltaDays); if (en < s) en = s; }
-          const l = pctL(s), r = pctL(en) + 100 / DAYS;
-          bar.style.left = l + '%'; bar.style.width = Math.max(2, r - l) + '%';
-        }
+        deltaDays = Math.round((ev.clientX - startX) / DAY_W);
+        const dx = deltaDays * DAY_W;
+        if (mode === 'due') bar.style.left = origLeft + dx + 'px';
+        if (mode === 'move') bar.style.left = origLeft + dx + 'px';
+        if (mode === 'l') { const w = Math.max(DAY_W, origW - dx); bar.style.left = origLeft + (origW - w) + 'px'; bar.style.width = w + 'px'; }
+        if (mode === 'r') bar.style.width = Math.max(DAY_W, origW + dx) + 'px';
       };
       const onUp = () => {
         el.removeEventListener('pointermove', onMove);
@@ -183,8 +213,8 @@ function bindDrag(main) {
         if (!deltaDays) return;
         if (mode === 'due') { t.due = addDays(orig.due, deltaDays); toast(`마감일 → ${t.due} (${dday(t.due)})`); }
         else {
-          if (mode === 'move' || mode === 'l') p.start = addDays(orig.start, mode === 'r' ? 0 : deltaDays);
-          if (mode === 'move' || mode === 'r') p.end = addDays(orig.end, mode === 'l' ? 0 : deltaDays);
+          if (mode === 'move' || mode === 'l') p.start = addDays(orig.start, deltaDays);
+          if (mode === 'move' || mode === 'r') p.end = addDays(orig.end, deltaDays);
           if (p.start > p.end) [p.start, p.end] = [p.end, p.start];
           toast(`${p.name}: ${p.start} ~ ${p.end}`);
         }
