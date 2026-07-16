@@ -521,7 +521,7 @@
             "id": "mrniqmczor3sm",
             "member": "김연우",
             "text": "실제 채널에 적용된 모습을 목업으로 제작 1차.  트렌드 리서치 진행",
-            "criteria": "",
+            "criteria": "7/16(목) 디자인 주간 회의 시간까지 1차 작업 진행 공유 (어떤 그래픽 모티프로 시안을 확장할지) / 7/20(월) 디자인 주간 회의 시간까지 2차 작업 진행 공유",
             "leadId": "",
             "done": false,
             "reason": ""
@@ -531,14 +531,14 @@
         "lagMonth": {},
         "evalNote": ""
       },
-      "mt": "2026-07-16T13:02:16.248Z"
+      "mt": "2026-07-16T13:02:23.613Z"
     }
   ],
   "archive": [],
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T13:02:16.248Z",
+  "updatedAt": "2026-07-16T13:02:23.614Z",
   "seeded": false,
   "docs": [],
   "meta": {
