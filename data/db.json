@@ -24,7 +24,7 @@
       "notionId": "39fbd60b-5762-80eb-a196-cd36c9009687",
       "kind": "request",
       "title": "부스터 100ml 단상자 디자인요청",
-      "project": "mrn31l2owtvho",
+      "project": "",
       "assignees": [
         "m-geuna"
       ],
@@ -117,7 +117,7 @@
       "notionId": "39ebd60b-5762-80e5-99ff-f7e6cb1c220e",
       "kind": "request",
       "title": "부스터프로 100ml 용기 디자인 발주파일",
-      "project": "mrn31l2owtvho",
+      "project": "",
       "assignees": [
         "m-geuna"
       ],
@@ -155,7 +155,7 @@
       "notionId": "39cbd60b-5762-807b-b336-ec7452ff2619",
       "kind": "request",
       "title": "이마트 트레이더스 RRP 패키지 제작 요청",
-      "project": "mrn31l2owtvho",
+      "project": "",
       "assignees": [
         "m-geuna",
         "m-yeonwoo",
@@ -333,14 +333,6 @@
       "start": "2026-07-16",
       "end": "2026-07-31",
       "owner": null
-    },
-    {
-      "id": "mrn31l2owtvho",
-      "name": "[신제품] 부스터 100ml",
-      "color": "#6B5CA5",
-      "start": "2026-07-16",
-      "end": "2026-07-24",
-      "owner": null
     }
   ],
   "members": [
@@ -365,7 +357,7 @@
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T05:43:34.447Z",
+  "updatedAt": "2026-07-16T05:43:48.172Z",
   "seeded": false,
   "docs": [],
   "meta": {
