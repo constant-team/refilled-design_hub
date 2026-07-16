@@ -28,7 +28,7 @@
       "assignees": [
         "m-geuna"
       ],
-      "status": "doing",
+      "status": "confirm",
       "priority": "🚨긴급",
       "requester": "김수희",
       "requestedAt": "2026-07-16",
@@ -98,7 +98,7 @@
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T02:21:44.685Z",
+  "updatedAt": "2026-07-16T05:33:03.340Z",
   "seeded": false,
   "docs": [],
   "meta": {
