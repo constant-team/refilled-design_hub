@@ -6,10 +6,7 @@
       "kind": "request",
       "title": "쿠팡 클렌저 용기 디자인 요청",
       "project": "mrmsbnmiu953o",
-      "assignees": [
-        "m-yeonwoo",
-        "m-minhyeon"
-      ],
+      "assignees": [],
       "status": "req",
       "priority": "높음",
       "requester": "강다현",
@@ -53,7 +50,7 @@
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T00:48:37.857Z",
+  "updatedAt": "2026-07-16T00:48:43.154Z",
   "seeded": false,
   "docs": [],
   "meta": {
