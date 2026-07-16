@@ -5,7 +5,7 @@
       "notionId": "39dbd60b-5762-80ef-adc3-fb06d5bb8601",
       "kind": "request",
       "title": "쿠팡 클렌저 용기 디자인 요청",
-      "project": "",
+      "project": "mrmsbnmiu953o",
       "assignees": [],
       "status": "req",
       "priority": "높음",
@@ -18,13 +18,26 @@
       "createdAt": "2026-07-16T00:39:29.078Z"
     }
   ],
-  "projects": [],
+  "projects": [
+    {
+      "id": "mrmsbnmiu953o",
+      "name": "[쿠팡] 클렌저 대용량",
+      "color": "#006DE2",
+      "start": "2026-07-16",
+      "end": "2026-07-20",
+      "owner": null
+    }
+  ],
   "members": [],
-  "docs": [],
+  "rituals": [],
   "archive": [],
   "trends": [],
+  "config": {},
+  "guardLog": [],
+  "updatedAt": "2026-07-16T00:42:42.138Z",
+  "seeded": false,
+  "docs": [],
   "meta": {
     "note": "앱이 첫 push 시 자동으로 채웁니다"
-  },
-  "updatedAt": "2026-07-16T00:39:29.282Z"
+  }
 }
