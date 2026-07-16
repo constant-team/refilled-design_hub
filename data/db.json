@@ -43,7 +43,7 @@
       "notionId": "39fbd60b-5762-8016-a77c-fb60222d290c",
       "kind": "request",
       "title": "[IG] 7월 OY 클렌저 런칭 스토리",
-      "project": "mrmvv0x9jjlm9",
+      "project": "",
       "assignees": [
         "m-minhyeon"
       ],
@@ -56,7 +56,7 @@
       "files": [],
       "notes": "노션 요청 DB에서 자동 등록\n\n📄 노션 페이지: https://app.notion.com/p/IG-7-OY-39fbd60b57628016a77cfb60222d290c",
       "createdAt": "2026-07-16T01:59:16.377Z",
-      "mt": "2026-07-16T08:10:36.170Z"
+      "mt": "2026-07-16T08:13:02.618Z"
     },
     {
       "id": "nt_39fbd60b5762807c9c19e0b5314ac7a7",
@@ -323,15 +323,6 @@
       "mt": "2026-07-16T08:12:28.673Z"
     },
     {
-      "id": "mrmvv0x9jjlm9",
-      "name": "[인스타그램] 국내",
-      "color": "#0F7B5F",
-      "start": "2026-07-14",
-      "end": "2026-07-20",
-      "owner": null,
-      "mt": "2026-07-16T08:10:40.714Z"
-    },
-    {
       "id": "mrn2swe6yp3b1",
       "name": "리브랜딩 프로젝트",
       "color": "#B7791F",
@@ -421,7 +412,7 @@
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T08:12:28.673Z",
+  "updatedAt": "2026-07-16T08:13:03.519Z",
   "seeded": false,
   "docs": [],
   "meta": {
