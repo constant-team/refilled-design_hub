@@ -544,13 +544,28 @@
         "evalNote": ""
       },
       "mt": "2026-07-16T13:02:45.258Z"
+    },
+    {
+      "id": "mrnirg0fdi35d",
+      "type": "goals",
+      "date": "2026-07-20",
+      "title": "7월 4주차 가중목",
+      "author": "",
+      "createdAt": "2026-07-16T13:02:48.783Z",
+      "data": {
+        "commitments": [],
+        "leadWeek": {},
+        "lagMonth": {},
+        "evalNote": ""
+      },
+      "mt": "2026-07-16T13:02:48.783Z"
     }
   ],
   "archive": [],
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T13:02:45.258Z",
+  "updatedAt": "2026-07-16T13:02:48.783Z",
   "seeded": false,
   "docs": [],
   "meta": {
