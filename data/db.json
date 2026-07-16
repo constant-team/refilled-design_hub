@@ -367,9 +367,10 @@
       "id": "p-eyelashv3",
       "name": "[OY 기획세트] 아이래쉬 V3",
       "color": "#A34A4A",
-      "start": "2026-03-03",
+      "start": "2026-07-01",
       "end": "2026-07-31",
-      "owner": "m-yeonwoo"
+      "owner": "m-yeonwoo",
+      "mt": "2026-07-16T08:11:41.948Z"
     },
     {
       "id": "p-boosterog",
@@ -418,7 +419,7 @@
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T08:11:31.641Z",
+  "updatedAt": "2026-07-16T08:11:41.948Z",
   "seeded": false,
   "docs": [],
   "meta": {
