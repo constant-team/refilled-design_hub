@@ -358,9 +358,10 @@
       "id": "p-sanrio2",
       "name": "[OY 기획세트] 산리오 2종",
       "color": "#C2557E",
-      "start": "2026-03-03",
+      "start": "2026-07-01",
       "end": "2026-07-30",
-      "owner": "m-yeonwoo"
+      "owner": "m-yeonwoo",
+      "mt": "2026-07-16T08:11:31.641Z"
     },
     {
       "id": "p-eyelashv3",
@@ -417,7 +418,7 @@
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T08:11:01.003Z",
+  "updatedAt": "2026-07-16T08:11:31.641Z",
   "seeded": false,
   "docs": [],
   "meta": {
