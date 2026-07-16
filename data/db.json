@@ -324,8 +324,9 @@
       "name": "[인스타그램] 국내",
       "color": "#0F7B5F",
       "start": "2026-07-16",
-      "end": "2026-07-20",
-      "owner": null
+      "end": "2026-07-19",
+      "owner": null,
+      "mt": "2026-07-16T08:09:39.334Z"
     },
     {
       "id": "mrn2swe6yp3b1",
@@ -414,7 +415,7 @@
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T08:09:35.119Z",
+  "updatedAt": "2026-07-16T08:09:39.335Z",
   "seeded": false,
   "docs": [],
   "meta": {
