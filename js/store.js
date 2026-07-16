@@ -242,11 +242,11 @@ class Store {
       { type: 'section', text: { type: 'mrkdwn', text: ':inbox_tray: 새 요청 업무가 등록됐어요 <!subteam^S06BYJ0KS5T|@디자인팀-ct>' } },
       { type: 'header', text: { type: 'plain_text', text: t.title.slice(0, 148), emoji: true } },
       { type: 'section', fields: [
-        { type: 'mrkdwn', text: `*프로젝트:*\n${proj}` },
-        { type: 'mrkdwn', text: `*기획자·요청자:*\n${t.requester || '미기재'}` },
-        { type: 'mrkdwn', text: `*요청일:*\n${t.requestedAt || '-'}` },
-        { type: 'mrkdwn', text: `*마감일:*\n${t.due || '미정'}` },
-        { type: 'mrkdwn', text: `*우선순위:*\n${t.priority || '중간'}` },
+        { type: 'mrkdwn', text: `*프로젝트:* ${proj}` },
+        { type: 'mrkdwn', text: `*기획자·요청자:* ${t.requester || '미기재'}` },
+        { type: 'mrkdwn', text: `*요청일:* ${t.requestedAt || '-'}` },
+        { type: 'mrkdwn', text: `*마감일:* ${t.due || '미정'}` },
+        { type: 'mrkdwn', text: `*우선순위:* ${t.priority || '중간'}` },
       ]},
       ...(t.notes ? [{ type: 'section', text: { type: 'mrkdwn', text: `*메모:* ${t.notes.slice(0, 500)}` } }] : []),
       { type: 'actions', elements: [

@@ -81,6 +81,8 @@ function mapTask(page) {
   const status = STATUS_MAP[statusKo] || 'req';
   const priority = plain(prop(props, '우선순위', 'Priority')) || '중간';
   const due = plain(prop(props, '마감일', 'Due', '마감'));
+  const rawPlan = plain(prop(props, '기획안 링크', '기획안', '링크', 'Link'));
+  const planLink = /^https?:\/\//.test(rawPlan) ? rawPlan : '';
   const reqAt = plain(prop(props, '요청일', 'Created', '생성일')) || new Date().toISOString().slice(0, 10);
   const designers = people(prop(props, '디자인 담당자', '담당자')).map(u => u.name).filter(Boolean);
   const cb = page.created_by || {};
@@ -93,7 +95,8 @@ function mapTask(page) {
     notionId: page.id || null,
     kind: 'request', title, project: '', assignees: [], _designerNames: designers, _planners: planners,
     status, priority: ['🚨긴급', '높음', '중간', '낮음', '보류'].includes(priority) ? priority : '중간',
-    requester, requestedAt: reqAt, due, link: page.url || '',
+    requester, requestedAt: reqAt, due,
+    link: planLink || page.url || '', _planLink: planLink, _notionUrl: page.url || '',
     files: [], notes: '노션 요청 DB에서 자동 등록', createdAt: new Date().toISOString(),
     ...(status === 'done' ? { doneAt: reqAt } : {}),
   };
@@ -142,13 +145,14 @@ async function notifySlack(hook, t, boardUrl, userMap = {}, notionMap = {}) {
     { type: 'section', text: { type: 'mrkdwn', text: `:inbox_tray: 새 요청 업무가 등록됐어요 ${teamMention}` } },
     { type: 'header', text: { type: 'plain_text', text: t.title.slice(0, 148), emoji: true } },
     { type: 'section', fields: [
-      { type: 'mrkdwn', text: `*기획자·요청자:*\n${requesterText}` },
-      { type: 'mrkdwn', text: `*우선순위:*\n${t.priority}` },
-      { type: 'mrkdwn', text: `*요청일:*\n${t.requestedAt || '-'}` },
-      { type: 'mrkdwn', text: `*마감일:*\n${t.due || '미정'}` },
+      { type: 'mrkdwn', text: `*기획자·요청자:* ${requesterText}` },
+      { type: 'mrkdwn', text: `*우선순위:* ${t.priority}` },
+      { type: 'mrkdwn', text: `*요청일:* ${t.requestedAt || '-'}` },
+      { type: 'mrkdwn', text: `*마감일:* ${t.due || '미정'}` },
     ]},
     { type: 'actions', elements: [
-      ...(t.link ? [{ type: 'button', text: { type: 'plain_text', text: '📄 노션 페이지 바로가기', emoji: true }, url: t.link }] : []),
+      ...(t._planLink ? [{ type: 'button', text: { type: 'plain_text', text: '📋 기획안 바로가기', emoji: true }, url: t._planLink }] : []),
+      ...(t._notionUrl ? [{ type: 'button', text: { type: 'plain_text', text: '📄 노션 페이지', emoji: true }, url: t._notionUrl }] : []),
       { type: 'button', text: { type: 'plain_text', text: '업무 보드에서 확인', emoji: true }, url: boardUrl },
     ]},
   ];
@@ -185,6 +189,10 @@ export default async function handler(req, res) {
     const task = mapTask(page);
     if (pageBody) task.notes = pageBody;
 
+    if (task._planLink && task._notionUrl) {
+      task.notes = (task.notes ? task.notes + '\n\n' : '') + '📄 노션 페이지: ' + task._notionUrl;
+    }
+
     // 이름이 안 넘어온 기획자는 매핑표의 이름으로 보완 (허브 표시용)
     const resolvedNames = (task._planners || []).map(u => u.name || notionMap[u.id]?.n).filter(Boolean);
     if (resolvedNames.length) {
@@ -206,7 +214,7 @@ export default async function handler(req, res) {
       task.assignees = (db.members || [])
         .filter(m => task._designerNames?.some(n => n.includes(m.name) || m.name.includes(n)))
         .map(m => m.id);
-      const { _designerNames, _planners, ...clean } = task;
+      const { _designerNames, _planners, _planLink, _notionUrl, ...clean } = task;
       db.tasks = db.tasks || []; db.tasks.push(clean);
       db.updatedAt = new Date().toISOString();
       try { await ghPut(GH_REPO, GH_BRANCH, GH_TOKEN, db, sha); break; }
