@@ -409,24 +409,12 @@
       "role": "인턴"
     }
   ],
-  "rituals": [
-    {
-      "id": "mrn78eqdmirbu",
-      "type": "goals",
-      "date": "2026-07-16",
-      "author": "",
-      "createdAt": "2026-07-16T07:40:04.885Z",
-      "title": "7월 3주차 가중목",
-      "data": {
-        "goals": []
-      }
-    }
-  ],
+  "rituals": [],
   "archive": [],
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T07:40:21.808Z",
+  "updatedAt": "2026-07-16T07:40:25.136Z",
   "seeded": false,
   "docs": [],
   "meta": {
