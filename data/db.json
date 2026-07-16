@@ -957,13 +957,28 @@
         "evalNote": ""
       },
       "mt": "2026-07-16T12:47:10.496Z"
+    },
+    {
+      "id": "mrni9auvsszb2",
+      "type": "goals",
+      "date": "2026-07-10",
+      "title": "7월 2주차 가중목",
+      "author": "",
+      "createdAt": "2026-07-16T12:48:42.295Z",
+      "data": {
+        "commitments": [],
+        "leadWeek": {},
+        "lagMonth": {},
+        "evalNote": ""
+      },
+      "mt": "2026-07-16T12:48:42.295Z"
     }
   ],
   "archive": [],
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T12:47:10.496Z",
+  "updatedAt": "2026-07-16T12:48:42.296Z",
   "seeded": false,
   "docs": [],
   "meta": {
