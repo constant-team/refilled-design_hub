@@ -482,19 +482,44 @@
       "author": "",
       "createdAt": "2026-07-16T12:45:38.710Z",
       "data": {
+        "commitments": [
+          {
+            "id": "mrni5hmirdw90",
+            "member": "이근아",
+            "text": "",
+            "criteria": "",
+            "leadId": "",
+            "done": false,
+            "reason": ""
+          }
+        ],
+        "leadWeek": {},
+        "lagMonth": {},
+        "evalNote": ""
+      },
+      "mt": "2026-07-16T12:45:44.442Z"
+    },
+    {
+      "id": "mrni5hmjpgzs2",
+      "type": "goals",
+      "date": "2026-07-04",
+      "title": "7월 1주차 가중목",
+      "author": "",
+      "createdAt": "2026-07-16T12:45:44.443Z",
+      "data": {
         "commitments": [],
         "leadWeek": {},
         "lagMonth": {},
         "evalNote": ""
       },
-      "mt": "2026-07-16T12:45:38.710Z"
+      "mt": "2026-07-16T12:45:44.443Z"
     }
   ],
   "archive": [],
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T12:45:38.710Z",
+  "updatedAt": "2026-07-16T12:45:44.443Z",
   "seeded": false,
   "docs": [],
   "meta": {
