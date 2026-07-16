@@ -507,19 +507,29 @@
       "author": "",
       "createdAt": "2026-07-16T13:01:32.059Z",
       "data": {
-        "commitments": [],
+        "commitments": [
+          {
+            "id": "mrnipv9kzkjeb",
+            "member": "이근아",
+            "text": "",
+            "criteria": "",
+            "leadId": "",
+            "done": false,
+            "reason": ""
+          }
+        ],
         "leadWeek": {},
         "lagMonth": {},
         "evalNote": ""
       },
-      "mt": "2026-07-16T13:01:32.059Z"
+      "mt": "2026-07-16T13:01:35.240Z"
     }
   ],
   "archive": [],
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-16T13:01:32.059Z",
+  "updatedAt": "2026-07-16T13:01:35.241Z",
   "seeded": false,
   "docs": [],
   "meta": {
