@@ -1,6 +1,36 @@
-/* ai.js — Anthropic API 브라우저 직접 호출
-   설정 > Anthropic API 키가 필요합니다. (팀 공용 키, 예산 제한 권장) */
+/* ai.js — LLM 브라우저 직접 호출
+   Google Gemini(무료 등급) 우선, Anthropic 키가 있으면 Claude 사용.
+   설정 > AI 기능에서 키를 등록하세요. */
 import { store } from './store.js';
+
+/* ── Google Gemini (aistudio.google.com 무료 키) ── */
+async function callGemini({ system, prompt, tools = null, maxTokens = 1500 }) {
+  const key = store.settings.geminiKey;
+  const body = {
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: Math.max(maxTokens, 2048) },
+  };
+  if (system) body.system_instruction = { parts: [{ text: system }] };
+  if (tools) body.tools = [{ google_search: {} }]; // 웹 검색 요청 → Gemini 그라운딩으로 매핑
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error?.message || 'Gemini API 오류 ' + res.status);
+  }
+  const data = await res.json();
+  const out = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('\n').trim();
+  if (!out) throw new Error('Gemini 응답이 비어 있어요' + (data.candidates?.[0]?.finishReason ? ` (${data.candidates[0].finishReason})` : ''));
+  return out;
+}
+
+/* ── 공용 진입점: Gemini 키 → Gemini, 아니면 Anthropic ── */
+function callLLM(args) {
+  if (store.settings.geminiKey) return callGemini(args);
+  if (store.settings.anthropicKey) return callClaude(args);
+  throw new Error('설정 > AI 기능에서 Gemini(무료) 또는 Anthropic API 키를 먼저 등록해주세요.');
+}
 
 async function callClaude({ system, prompt, tools = null, maxTokens = 1500 }) {
   const key = store.settings.anthropicKey;
@@ -42,7 +72,7 @@ export const ai = {
     const guide = model === 'higgsfield'
       ? '힉스필드 Soul 2 모델용: 사실적 인물/제품 사진 스타일. 카메라·렌즈·조명 용어를 자연스럽게 포함한 영어 프롬프트 1개.'
       : '나노바나나 프로(이미지 생성)용: 장면을 구체적으로 묘사하는 자연어 영어 프롬프트 1개. 피사체→환경→조명→스타일 순.';
-    return callClaude({
+    return callLLM({
       system: BRAND_SYSTEM,
       prompt: `아래 초안 프롬프트를 리필드 브랜드 무드에 맞게 다듬어줘. ${guide}\n프롬프트 텍스트만 출력하고 다른 설명은 하지 마.\n\n초안:\n${draft}`,
     });
@@ -50,7 +80,7 @@ export const ai = {
 
   /* 메일 포맷 생성 */
   composeMail({ to, purpose, points, keywords, tone }) {
-    return callClaude({
+    return callLLM({
       system: BRAND_SYSTEM + '\n한국 회사 실무 이메일 형식으로 작성합니다.',
       prompt: `아래 정보로 업무 메일을 작성해줘. 제목 1줄 + 본문. 서명은 "리필드 디자인팀 드림"으로.
 - 받는 대상: ${to}
@@ -65,7 +95,7 @@ export const ai = {
 
   /* 키워드 트렌드 리서치 (웹 검색 포함) */
   researchTrend(keywords) {
-    return callClaude({
+    return callLLM({
       system: BRAND_SYSTEM,
       prompt: `"${keywords}" 관련 최신 디자인/뷰티 비주얼 트렌드를 웹에서 조사해서 한국어로 정리해줘.
 형식: ① 지금 뜨는 흐름 3가지 (각 2문장) ② 리필드에 적용할 포인트 3가지 ③ 참고할 만한 검색 키워드 5개.
@@ -78,7 +108,7 @@ export const ai = {
   /* 파일 경로 추론 검색: '루미 누끼'처럼 경로에 단어가 없어도 의미로 추론 */
   async inferFiles(query, candidates) {
     const list = candidates.slice(0, 300).map((c, i) => `${i}\t${c.path}`).join('\n');
-    const out = await callClaude({
+    const out = await callLLM({
       system: '당신은 디자인팀 파일 서버 검색 도우미입니다. 파일명 관례(누끼=배경제거 PNG, 시안=draft, 최종=final 등)와 한/영 혼용, 약어, 프로젝트 코드명을 이해합니다.',
       prompt: `사용자 검색어: "${query}"
 아래 파일 경로 목록에서 검색어의 의도와 맞을 가능성이 높은 파일을 최대 10개 골라줘.
@@ -96,7 +126,7 @@ ${list}`,
 
   /* 금요 리포트 다듬기 */
   polishReport(raw) {
-    return callClaude({
+    return callLLM({
       system: BRAND_SYSTEM,
       prompt: `아래 디자인팀 주간 리포트 초안을 상급자 공유용으로 다듬어줘. 구조는 유지하고 문장만 간결하고 명확하게. 텍스트만 출력.\n\n${raw}`,
       maxTokens: 1500,

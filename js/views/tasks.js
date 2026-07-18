@@ -48,8 +48,8 @@ export function renderTasks(main, sub = '') {
   const cols = ORDER.map(st => {
     const list = tasks.filter(t => t.status === st)
       .sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : 1);
-    return `<div class="kb-col">
-      <div class="kb-col-h">${STATUS[st].label}<span class="cnt">${list.length}</span></div>
+    return `<div class="kb-col col-${st}">
+      <div class="kb-col-h"><span class="col-dot"></span>${STATUS[st].label}<span class="cnt">${list.length}</span></div>
       ${list.map(t => card(t)).join('') || '<div class="empty" style="padding:14px 4px">비어 있어요</div>'}
     </div>`;
   }).join('');
@@ -106,14 +106,15 @@ function card(t) {
   return `<div class="kb-card" data-task="${t.id}">
     <div class="t">${urgent ? `<span class="pri">${t.priority === '🚨긴급' ? '🚨' : '↑'}</span>` : ''}${esc(t.title)}</div>
     <div class="m">
-      <span class="tag" style="background:${(p?.color || '#888') + '22'};color:${p?.color || '#666'}">${esc(store.projectName(t.project))}</span>
-      <span class="muted" style="font-size:10.5px">${esc(store.assigneeNames(t))}</span>
-      ${t.due ? `<span class="due ${over ? 'over' : ''}">${t.due.slice(5)} · ${dday(t.due)}</span>` : ''}
-      ${t.kind === 'request' ? `<span class="tag blue">${esc(t.requester || '요청')}</span>` : ''}
+      ${t.due ? `<span class="due-big ${over ? 'over' : (dday(t.due).match(/D-[0-3]$/) ? 'warn' : '')}">${dday(t.due)} <i>· ${t.due.slice(5).replace('-', '/')}</i></span>` : '<span class="due-big none">기한 없음</span>'}
+      <span class="assg">${esc(store.assigneeNames(t))}</span>
+      ${t.kind === 'request' && t.requester ? `<span class="reqr">요청 ${esc(t.requester)}</span>` : ''}
       ${t.notionId ? `<span class="tag gray" title="노션에서 자동 등록">N</span>` : ''}
       ${t.files?.length ? `<span class="muted" style="font-size:10px">📎${t.files.length}</span>` : ''}
       ${t.link ? `<a href="${esc(t.link)}" target="_blank" rel="noopener" title="작업 링크 열기" style="font-size:10px">🔗</a>` : ''}
     </div>
+    ${t.project ? `<div class="pj-line"><i style="background:${p?.color || '#999'}"></i>${esc(store.projectName(t.project))}${t.priority === '보류' ? '<span class="hold-tag">보류</span>' : ''}</div>`
+      : (t.priority === '보류' ? '<div class="pj-line"><span class="hold-tag">보류</span></div>' : '')}
     <div class="mv">${moves.join('')}</div>
   </div>`;
 }

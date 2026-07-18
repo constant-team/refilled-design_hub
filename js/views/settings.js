@@ -35,10 +35,13 @@ export function renderSettings(main) {
       <div class="ai-note">토큰은 이 저장소 하나에 <b>Contents: Read and write</b> 권한만 주면 돼요. 팀원 각자 자기 토큰을 넣으면 커밋 기록으로 누가 수정했는지 남습니다.</div>
     </div></div>
 
-    <div class="card"><div class="card-h"><h3>AI 기능 (Anthropic)</h3></div><div class="card-b">
-      <div class="field"><label>Anthropic API 키</label><input id="s-akey" type="password" value="${esc(s.anthropicKey)}" placeholder="sk-ant-..."></div>
+    <div class="card"><div class="card-h"><h3>AI 기능</h3></div><div class="card-b">
+      <div class="field"><label>Google Gemini API 키 <span class="muted" style="font-weight:400">(무료 · 권장)</span></label>
+        <input id="s-gkey" type="password" value="${esc(s.geminiKey || '')}" placeholder="AIza..."></div>
+      <div class="field"><label>Anthropic API 키 <span class="muted" style="font-weight:400">(선택 · 종량 과금)</span></label>
+        <input id="s-akey" type="password" value="${esc(s.anthropicKey)}" placeholder="sk-ant-..."></div>
       <button class="btn primary" id="s-akey-save">저장</button>
-      <div class="ai-note">메일 생성·트렌드 리서치·AI 추론 검색·프롬프트 다듬기에 사용돼요. 콘솔에서 <b>월 예산 한도</b>를 꼭 설정한 팀 공용 키를 권장합니다. 키는 서버로 전송되지 않고 각자 브라우저(localStorage)에만 저장돼요.</div>
+      <div class="ai-note">메일 생성·트렌드 리서치·AI 추론 검색·프롬프트 다듬기에 사용돼요. <b>Gemini 키는 aistudio.google.com/apikey에서 구글 로그인만으로 무료 발급</b>되고, Gemini 키가 있으면 그걸 우선 사용해요. 키는 서버로 전송되지 않고 각자 브라우저(localStorage)에만 저장돼요.</div>
     </div></div>
 
     <div class="card"><div class="card-h"><h3>팀 알림 (Slack)</h3></div><div class="card-b">
@@ -87,7 +90,11 @@ export function renderSettings(main) {
   $('#s-pull').onclick = async () => { saveSync(); await store.pull(); toast('최신 데이터를 불러왔어요'); window.dispatchEvent(new Event('hashchange')); };
   $('#s-push').onclick = async () => { saveSync(); await store.push(); toast(store.status === 'synced' ? '팀 저장소에 올렸어요' : '업로드 실패', store.status !== 'synced'); };
 
-  $('#s-akey-save').onclick = () => { s.anthropicKey = $('#s-akey').value.trim(); store.saveSettings(); toast('API 키를 저장했어요'); };
+  $('#s-akey-save').onclick = () => {
+    s.geminiKey = $('#s-gkey').value.trim();
+    s.anthropicKey = $('#s-akey').value.trim();
+    store.saveSettings(); toast('API 키를 저장했어요');
+  };
 
   $('#s-slack-save').onclick = () => {
     const url = $('#s-slack').value.trim();

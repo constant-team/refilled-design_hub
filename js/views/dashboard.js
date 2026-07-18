@@ -8,10 +8,10 @@ const taskRow = t => `
     <div class="tk-main">
       <div class="tk-title">${esc(t.title)}</div>
       <div class="tk-meta">
-        <span>${esc(store.projectName(t.project))}</span>
+        ${t.due ? `<b class="tk-dd ${t.due < todayISO() ? 'over' : (dday(t.due).match(/D-[0-3]$/) ? 'warn' : '')}">${dday(t.due)}</b><span class="mono" style="font-size:10px">${t.due.slice(5).replace('-', '/')}</span>` : ''}
         <span>${esc(store.assigneeNames(t))}</span>
-        ${t.due ? `<span class="mono">${dday(t.due)}</span>` : ''}
-        ${t.kind === 'request' ? `<span class="tag blue">${esc(t.requester || '요청')}</span>` : ''}
+        ${t.kind === 'request' && t.requester ? `<span class="muted">요청 ${esc(t.requester)}</span>` : ''}
+        ${t.project ? `<span class="muted">${esc(store.projectName(t.project))}</span>` : ''}
       </div>
     </div>
   </div>`;
@@ -41,15 +41,26 @@ export function renderDashboard(main) {
   const weekMarks = [0, 7, 14, 21, 28].map(off => {
     const d = todayISO(off - 7);
     return `<span style="left:${pct(d)}%">${d.slice(5).replace('-', '/')}</span>`;
-  }).join('');
+  }).join('') + `<span class="g-today-lb" style="left:${pct(today)}%">오늘</span>`;
+  /* 주말 음영: 창 시작 요일 기준으로 토·일 반복 */
+  const dow0 = new Date(todayISO(-7) + 'T00:00:00').getDay();
+  const satOff = (6 - dow0 + 7) % 7;
+  const dayPct = 100 / 35;
+  const wkndBg = `background-image:repeating-linear-gradient(90deg,rgba(120,120,120,.08) 0 ${(2 * dayPct).toFixed(3)}%,transparent ${(2 * dayPct).toFixed(3)}% ${(7 * dayPct).toFixed(3)}%);background-position:${(satOff * dayPct).toFixed(3)}% 0`;
 
-  const ganttRows = db.projects.map(p => {
+  const ganttRows = [...db.projects]
+    .sort((a, b) => ((a.end || '9999') < (b.end || '9999') ? -1 : 1))
+    .map(p => {
     const cnt = open.filter(t => t.project === p.id).length;
     const l = pct(p.start), r = pct(p.end);
-    return `<div class="g-row g-link" onclick="location.hash='#/tasks/projects'" title="클릭하면 타임라인 편집으로 이동">
-      <div class="g-name">${esc(p.name)}<span>${esc(store.memberName(p.owner))} · 진행 ${cnt}건</span></div>
-      <div class="g-track">
-        <div class="g-bar" style="left:${l}%;width:${Math.max(2, r - l)}%;background:${p.color || 'var(--accent)'}"></div>
+    const w = Math.max(2, r - l);
+    const rangeLb = `${(p.start || '').slice(5).replace('-', '/')} ~ ${(p.end || '').slice(5).replace('-', '/')}`;
+    const remain = p.end ? Math.round((new Date(p.end + 'T00:00:00') - new Date(today + 'T00:00:00')) / 864e5) : null;
+    const ddCls = remain === null ? '' : remain < 0 ? 'over' : remain <= 7 ? 'warn' : '';
+    return `<div class="g-row g-link" onclick="location.hash='#/tasks/projects'" title="${rangeLb} · 클릭하면 타임라인 편집으로 이동">
+      <div class="g-name">${esc(p.name)}<span>${p.end ? `<b class="tl-dd ${ddCls}">${dday(p.end)}</b> · ` : ''}${rangeLb} · ${esc(store.memberName(p.owner))} · ${cnt}건</span></div>
+      <div class="g-track" style="${wkndBg}">
+        <div class="g-bar" style="left:${l}%;width:${w}%;background:${p.color || 'var(--accent)'}">${w >= 26 ? `<span class="g-bar-lb">${rangeLb}</span>` : ''}</div>
         <div class="g-today" style="left:${pct(today)}%"></div>
       </div>
     </div>`;
@@ -91,12 +102,12 @@ export function renderDashboard(main) {
         || '<div class="empty">7일 내 예정 일정이 없어요</div>'}</div></div>
   </div>
 
-  <div class="card" style="margin-bottom:20px"><div class="card-h"><h3>프로젝트 타임라인</h3><span class="sub">지난 1주 ~ 앞으로 4주</span></div>
+  <span class="eyebrow">담당자별 업무</span>
+  <div class="assign-grid" style="margin-bottom:20px">${assignCols}</div>
+
+  <div class="card"><div class="card-h"><h3>프로젝트 타임라인</h3><span class="sub">지난 1주 ~ 앞으로 4주 · 마감 임박순</span></div>
     <div class="card-b gantt">
       <div class="g-scale"><div></div><div class="g-scale-track">${weekMarks}</div></div>
       ${ganttRows}
-    </div></div>
-
-  <span class="eyebrow">담당자별 업무</span>
-  <div class="assign-grid">${assignCols}</div>`;
+    </div></div>`;
 }

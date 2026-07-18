@@ -426,3 +426,37 @@ a{color:inherit;text-decoration:none}
 .pulse-view p{margin:5px 0}
 .pulse-view blockquote{margin:8px 0;padding:8px 12px;background:rgba(183,121,31,.08);border-left:3px solid var(--amber);border-radius:0 8px 8px 0;font-size:12px}
 .pulse-view a{color:var(--accent);word-break:break-all}
+/* ── 위계 개편: D-day 최우선 ── */
+.kb-card .due-big{font-family:var(--mono);font-weight:800;font-size:11.5px;color:var(--ink);font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;gap:2px}
+.kb-card .due-big i{font-style:normal;font-weight:500;font-size:10px;color:var(--muted)}
+.kb-card .due-big.warn{color:var(--amber)}
+.kb-card .due-big.over{color:var(--red)}
+.kb-card .due-big.none{font-weight:500;color:var(--muted);font-size:10.5px}
+.kb-card .assg{font-size:10.5px;font-weight:600}
+.kb-card .reqr{font-size:10px;color:var(--muted)}
+.kb-card .pj-line{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--muted);margin-top:5px}
+.kb-card .pj-line i{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.tk-meta .tk-dd{font-family:var(--mono);font-weight:800;font-size:11px;color:var(--ink);font-variant-numeric:tabular-nums}
+.tk-meta .tk-dd.warn{color:var(--amber)}
+.tk-meta .tk-dd.over{color:var(--red)}
+/* 대시보드 간트 날짜 표기 */
+.gantt .g-bar{overflow:hidden}
+.g-bar-lb{position:absolute;left:8px;top:50%;transform:translateY(-50%);font-size:9.5px;font-weight:700;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.3);font-variant-numeric:tabular-nums}
+.g-today-lb{position:absolute;transform:translateX(-50%);top:-3px;background:var(--amber);color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:6px}
+.g-scale-track{position:relative}
+.g-name span .tl-dd{font-size:10px}
+/* ── 보류 태그 ── */
+.hold-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:6px;background:rgba(196,74,64,.12);color:var(--red);font-size:9.5px;font-weight:800;letter-spacing:.02em}
+.kb-card:has(.hold-tag){opacity:.78}
+/* ── 칸반 컬럼 상태별 컬러 구분 ── */
+.kb-col{border-top:3px solid transparent}
+.kb-col .col-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;flex-shrink:0}
+.col-req{background:#EDF1F7;border-top-color:#5B7DB1}
+.col-req .col-dot{background:#5B7DB1}
+.col-req .kb-col-h{color:#3D5A85}
+.col-doing{background:#F7F1E4;border-top-color:var(--amber)}
+.col-doing .col-dot{background:var(--amber)}
+.col-doing .kb-col-h{color:#8A5D14}
+.col-confirm{background:#EFEAF6;border-top-color:#7C5FB0}
+.col-confirm .col-dot{background:#7C5FB0}
+.col-confirm .kb-col-h{color:#5A4384}

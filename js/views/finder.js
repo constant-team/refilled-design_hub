@@ -61,8 +61,8 @@ const hitRow = (f, q) => {
     <div><div class="fp">${p}</div>
       ${f.reason ? `<div class="muted" style="font-size:11px;margin-top:2px">→ ${esc(f.reason)}</div>` : ''}</div>
     <div style="display:flex;gap:8px;align-items:center">
-      <span class="fm">${f.ext || ''} ${f.size ? '· ' + (f.size / 1048576).toFixed(1) + 'MB' : ''}</span>
-      <button class="btn sm" data-cp="${esc(f.path)}">경로 복사</button></div>
+      <span class="fm">${f.ext || ''} ${f.size ? '· ' + (f.size / 1048576).toFixed(1) + 'MB' : ''}${f.mtime ? ' · ' + String(f.mtime).slice(0, 10) : ''}</span>
+      ${f.url ? `<a class="btn sm" href="${esc(f.url)}" target="_blank" rel="noopener">드라이브에서 열기 ↗</a>` : `<button class="btn sm" data-cp="${esc(f.path)}">경로 복사</button>`}</div>
   </div>`;
 };
 
@@ -82,7 +82,7 @@ export function renderFinder(main) {
     ① 저장소의 <span class="mono">tools/build_index.py</span>를 팀 공유 드라이브가 연결된 PC에서 실행:<br>
     <span class="mono" style="background:#182420;color:#DCE8E2;padding:3px 8px;border-radius:6px;display:inline-block;margin:6px 0">python tools/build_index.py "D:/디자인팀" </span><br>
     ② 생성된 <span class="mono">fileindex.json</span>을 저장소 <span class="mono">data/</span> 폴더에 커밋하면 팀 전체가 검색할 수 있어요.<br>
-    ③ 주기적으로(주 1회 등) 다시 실행해서 갱신하면 됩니다. GitHub Actions로 자동화도 가능해요.
+    ③ <b>구글 드라이브 연동</b>: 저장소의 <span class="mono">tools/drive-index.gs</span> 스크립트를 Apps Script에 붙여넣고 트리거를 걸면, 디자인팀 드라이브 전체가 매일 밤 자동으로 인덱싱돼요. 결과에 "드라이브에서 열기" 버튼이 생깁니다.
   </div></div>`;
 
   const status = $('#fd-status');
