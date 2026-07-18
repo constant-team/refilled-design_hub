@@ -27,25 +27,65 @@ async function loadIndex() {
   return null;
 }
 
+/* ── 구조화 검색: 검색어를 단어(개념) 단위로 쪼개고, 동의어·붙여쓰기 변형까지 고려해
+      "모든 단어를 동시에 만족"하는 파일을 최우선으로 보여줘요. ── */
+const SYN = {
+  '단상자': ['박스', 'box', '케이스', 'case', '패키지', 'package', 'pkg', '상자', 'carton'],
+  '박스': ['단상자', 'box', '케이스', 'case', '상자'],
+  '누끼': ['png', 'cutout', '투명', 'transparent', 'clipped', '누끼컷'],
+  '최종': ['final', 'fin', '확정'],
+  'final': ['최종', 'fin', '확정'],
+  '시안': ['draft', '초안'],
+  '부스터': ['booster'],
+  'booster': ['부스터'],
+  '배너': ['banner'],
+  'banner': ['배너'],
+  '상세': ['상세페이지', 'detail', '상페'],
+  '상세페이지': ['상세', 'detail', '상페'],
+  '로고': ['logo'],
+  'logo': ['로고'],
+  '썸네일': ['thumbnail', 'thumb', '섬네일'],
+  '영상': ['video', 'mp4', 'mov'],
+  '올영': ['올리브영', 'oliveyoung'],
+  '올리브영': ['올영', 'oliveyoung'],
+  '기획세트': ['기획전', 'set', '세트'],
+};
+const squash = s => String(s).toLowerCase().replace(/[\s_\-./()\[\]]+/g, '');
+const tokenize = q => q.toLowerCase().split(/\s+/).filter(Boolean);
+const variants = t => [t, ...(SYN[t] || [])];
+const tokenIn = (t, low, sq) => variants(t).some(v => low.includes(v) || sq.includes(squash(v)));
+
 function quickSearch(q, idx) {
-  const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
-  return idx
-    .map(f => {
-      const hay = f.path.toLowerCase();
-      const hit = tokens.filter(t => hay.includes(t)).length;
-      return { ...f, score: hit };
-    })
-    .filter(f => f.score > 0)
-    .sort((a, b) => b.score - a.score || a.path.length - b.path.length)
-    .slice(0, 30);
+  const tokens = tokenize(q);
+  const rows = [];
+  for (const f of idx) {
+    const low = f.path.toLowerCase(), sq = squash(f.path);
+    const name = (f.path.split('/').pop() || '').toLowerCase(), nameSq = squash(name);
+    const missing = []; let nameHits = 0;
+    for (const t of tokens) {
+      if (!tokenIn(t, low, sq)) missing.push(t);
+      else if (tokenIn(t, name, nameSq)) nameHits++;
+    }
+    const hit = tokens.length - missing.length;
+    if (!hit) continue;
+    rows.push({ ...f, hit, nameHits, missing });
+  }
+  rows.sort((a, b) =>
+    b.hit - a.hit                                   // ① 일치한 단어 수 (전체 일치가 항상 위)
+    || b.nameHits - a.nameHits                      // ② 파일명 자체에 일치한 단어 수
+    || String(b.mtime || '').localeCompare(String(a.mtime || '')) // ③ 최신순
+    || a.path.length - b.path.length);
+  const full = rows.filter(r => !r.missing.length).slice(0, 30);
+  const partial = rows.filter(r => r.missing.length).slice(0, full.length ? 15 : 30);
+  return { full, partial, tokens };
 }
 
 function prefilter(q, idx) {
-  // AI에 보낼 후보군: 토큰 부분일치 + 이미지/디자인 확장자 우선, 최대 300개
-  const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
+  // AI에 보낼 후보군: 동의어 포함 토큰 일치 + 이미지/디자인 확장자 우선, 최대 300개
+  const tokens = tokenize(q);
   const scored = idx.map(f => {
-    const hay = f.path.toLowerCase();
-    let s = tokens.filter(t => hay.includes(t)).length * 10;
+    const low = f.path.toLowerCase(), sq = squash(f.path);
+    let s = tokens.filter(t => tokenIn(t, low, sq)).length * 10;
     if (/\.(png|psd|ai|jpg|jpeg|tif|svg|webp)$/i.test(f.path)) s += 1;
     return { f, s };
   }).sort((a, b) => b.s - a.s);
@@ -54,12 +94,14 @@ function prefilter(q, idx) {
 
 const hitRow = (f, q) => {
   let p = esc(f.path);
-  q.toLowerCase().split(/\s+/).filter(Boolean).forEach(t => {
+  const vs = [...new Set(tokenize(q).flatMap(variants))].sort((a, b) => b.length - a.length);
+  vs.forEach(t => {
     p = p.replace(new RegExp(`(${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'), '<b>$1</b>');
   });
   return `<div class="find-hit">
     <div><div class="fp">${p}</div>
-      ${f.reason ? `<div class="muted" style="font-size:11px;margin-top:2px">→ ${esc(f.reason)}</div>` : ''}</div>
+      ${f.reason ? `<div class="muted" style="font-size:11px;margin-top:2px">→ ${esc(f.reason)}</div>` : ''}
+      ${f.missing?.length ? `<div style="font-size:11px;margin-top:2px;color:#B0763A">일부 일치 — 누락된 단어: ${f.missing.map(esc).join(', ')}</div>` : ''}</div>
     <div style="display:flex;gap:8px;align-items:center">
       <span class="fm">${f.ext || ''} ${f.size ? '· ' + (f.size / 1048576).toFixed(1) + 'MB' : ''}${f.mtime ? ' · ' + String(f.mtime).slice(0, 10) : ''}</span>
       ${f.url ? `<a class="btn sm" href="${esc(f.url)}" target="_blank" rel="noopener">드라이브에서 열기 ↗</a>` : `<button class="btn sm" data-cp="${esc(f.path)}">경로 복사</button>`}</div>
@@ -97,11 +139,22 @@ export function renderFinder(main) {
     $('#fd-count').textContent = list.length + '건';
     $('#fd-results').querySelectorAll('[data-cp]').forEach(b => b.onclick = e => copyText(b.dataset.cp, e.target));
   };
+  const grpHead = (label, n, sub) => `<div style="display:flex;align-items:baseline;gap:8px;margin:14px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line)">
+    <b style="font-size:12.5px">${label}</b><span class="muted" style="font-size:11.5px">${n}건${sub ? ' — ' + esc(sub) : ''}</span></div>`;
+  const showGrouped = (r, q) => {
+    let html = '';
+    if (r.full.length) html += grpHead('모든 단어 일치', r.full.length, r.tokens.join(' + ')) + r.full.map(f => hitRow(f, q)).join('');
+    if (r.partial.length) html += grpHead('일부 단어만 일치', r.partial.length, '') + r.partial.map(f => hitRow(f, q)).join('');
+    if (!html) html = '<div class="empty">일치하는 파일이 없어요' + (r.tokens.length > 1 ? ' — 단어 수를 줄이거나 "AI 추론 검색"을 눌러보세요' : '') + '</div>';
+    $('#fd-results').innerHTML = html;
+    $('#fd-count').textContent = (r.full.length + r.partial.length) + '건' + (r.full.length ? ` (전체 일치 ${r.full.length})` : '');
+    $('#fd-results').querySelectorAll('[data-cp]').forEach(b => b.onclick = e => copyText(b.dataset.cp, e.target));
+  };
 
   $('#fd-quick').onclick = async () => {
     const q = $('#fd-q').value.trim(); if (!q) return;
     const idx = await loadIndex(); if (!idx) return toast('인덱스가 없어요', true);
-    show(quickSearch(q, idx), q);
+    showGrouped(quickSearch(q, idx), q);
   };
   $('#fd-ai').onclick = async e => {
     const q = $('#fd-q').value.trim(); if (!q) return;
