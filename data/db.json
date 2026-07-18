@@ -589,7 +589,7 @@
           },
           {
             "id": "mrq0h6zqyiz2o",
-            "member": "이근아",
+            "member": "방민현",
             "text": "",
             "criteria": "",
             "leadId": "",
@@ -603,7 +603,7 @@
         "lagMonth": {},
         "evalNote": ""
       },
-      "mt": "2026-07-18T06:54:17.630Z"
+      "mt": "2026-07-18T06:54:18.853Z"
     },
     {
       "id": "mrniseqf6bmnn",
@@ -728,7 +728,7 @@
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-18T06:54:17.630Z",
+  "updatedAt": "2026-07-18T06:54:18.853Z",
   "seeded": false,
   "docs": [],
   "meta": {
