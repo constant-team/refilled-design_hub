@@ -9,7 +9,7 @@
       "assignees": [
         "m-geuna"
       ],
-      "status": "req",
+      "status": "doing",
       "priority": "높음",
       "requester": "강다현",
       "requestedAt": "2026-07-14",
@@ -17,7 +17,8 @@
       "link": "https://app.notion.com/p/39dbd60b576280efadc3fb06d5bb8601",
       "files": [],
       "notes": "노션 요청 DB에서 자동 등록",
-      "createdAt": "2026-07-16T00:39:29.078Z"
+      "createdAt": "2026-07-16T00:39:29.078Z",
+      "mt": "2026-07-18T06:43:56.977Z"
     },
     {
       "id": "nt_39fbd60b576280eba196cd36c9009687",
@@ -684,7 +685,7 @@
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-18T06:43:35.575Z",
+  "updatedAt": "2026-07-18T06:43:56.978Z",
   "seeded": false,
   "docs": [],
   "meta": {
