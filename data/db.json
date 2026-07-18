@@ -570,12 +570,12 @@
       "data": {
         "commitments": [],
         "leadWeek": {
-          "mrni3yyy8h5a1": 0
+          "mrni3yyy8h5a1": 1
         },
         "lagMonth": {},
         "evalNote": ""
       },
-      "mt": "2026-07-16T13:02:56.808Z"
+      "mt": "2026-07-18T06:47:23.776Z"
     },
     {
       "id": "mrniseqf6bmnn",
@@ -685,7 +685,7 @@
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-18T06:45:50.396Z",
+  "updatedAt": "2026-07-18T06:47:23.776Z",
   "seeded": false,
   "docs": [],
   "meta": {
