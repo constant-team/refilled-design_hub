@@ -574,7 +574,7 @@
             "member": "이근아",
             "text": "스마트스토어 번들구성 썸네일 제작을 완료한다.",
             "criteria": "7/25까지 완료작업 후, 7/26 내부 공유",
-            "leadId": "",
+            "leadId": "mrni3yyyale7e",
             "done": false,
             "reason": ""
           }
@@ -585,7 +585,7 @@
         "lagMonth": {},
         "evalNote": ""
       },
-      "mt": "2026-07-18T06:54:12.299Z"
+      "mt": "2026-07-18T06:54:13.527Z"
     },
     {
       "id": "mrniseqf6bmnn",
@@ -710,7 +710,7 @@
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-18T06:54:12.299Z",
+  "updatedAt": "2026-07-18T06:54:13.527Z",
   "seeded": false,
   "docs": [],
   "meta": {
