@@ -577,6 +577,24 @@
             "leadId": "mrni3yyyale7e",
             "done": false,
             "reason": ""
+          },
+          {
+            "id": "mrq0h63i6qv88",
+            "member": "이근아",
+            "text": "",
+            "criteria": "",
+            "leadId": "",
+            "done": false,
+            "reason": ""
+          },
+          {
+            "id": "mrq0h6zqyiz2o",
+            "member": "이근아",
+            "text": "",
+            "criteria": "",
+            "leadId": "",
+            "done": false,
+            "reason": ""
           }
         ],
         "leadWeek": {
@@ -585,7 +603,7 @@
         "lagMonth": {},
         "evalNote": ""
       },
-      "mt": "2026-07-18T06:54:13.527Z"
+      "mt": "2026-07-18T06:54:15.974Z"
     },
     {
       "id": "mrniseqf6bmnn",
@@ -710,7 +728,7 @@
   "trends": [],
   "config": {},
   "guardLog": [],
-  "updatedAt": "2026-07-18T06:54:13.527Z",
+  "updatedAt": "2026-07-18T06:54:15.975Z",
   "seeded": false,
   "docs": [],
   "meta": {
