@@ -406,6 +406,12 @@
       "id": "m-geuna",
       "name": "이근아",
       "role": "팀장"
+    },
+    {
+      "id": "mrrby5mc4wsu9",
+      "name": "김연우",
+      "role": "",
+      "mt": "2026-07-19T05:03:09.300Z"
     }
   ],
   "rituals": [
@@ -736,7 +742,7 @@
       "leadDays": 2
     }
   ],
-  "updatedAt": "2026-07-19T05:03:03.742Z",
+  "updatedAt": "2026-07-19T05:03:09.300Z",
   "seeded": false,
   "docs": [],
   "meta": {
