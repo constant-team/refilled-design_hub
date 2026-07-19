@@ -6,7 +6,6 @@ import { renderTasks } from './views/tasks.js';
 import { renderRituals } from './views/rituals.js';
 import { renderArchive } from './views/archive.js';
 import { renderStudio } from './views/studio.js';
-import { renderFinder } from './views/finder.js';
 import { renderSettings } from './views/settings.js';
 
 const routes = {
@@ -15,7 +14,6 @@ const routes = {
   rituals: renderRituals,
   archive: renderArchive,
   studio: renderStudio,
-  finder: renderFinder,
   settings: renderSettings,
 };
 

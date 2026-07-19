@@ -9,7 +9,7 @@ const RATIOS = ['1:1', '4:5', '9:16', '16:9', '3:4', '2:3'];
 
 /* ── 프롬프트 빌더: 3가지 타입 ── */
 const PB_TYPES = [
-  { id: 'midjourney', name: '미드저니', desc: '한 줄 프롬프트 + --ar 등 파라미터. 무드·컨셉 탐색에 강해요.' },
+  { id: 'midjourney', name: '미드저니', desc: '레퍼런스를 7요소로 분석해 상세 프롬프트로 변환해요. 무드·컨셉 탐색에 강해요.' },
   { id: 'nanobanana', name: '나노바나나 프로', desc: '참조 이미지와 함께 쓰는 구조화 프롬프트. 제품 디자인 보존·합성에 강해요.' },
   { id: 'higgsfield', name: '힉스필드 소울 2.0', desc: '텍스트 전용 — 레퍼런스의 모든 시각 정보를 글로 변환해요. (이미지+텍스트 동시 입력 불가)' },
 ];
@@ -122,14 +122,21 @@ function promptTab(root) {
 
   /* 생성 */
   const setOut = full => {
-    // '---' 앞부분 = 붙여넣을 프롬프트, 뒷부분 = 한국어 노트
+    // '---' 기준 분리. 미드저니: [7요소 분석] --- [최종 프롬프트] / 그 외: [프롬프트] --- [한국어 노트]
     const cut = full.split(/\n-{3,}\n/);
-    const promptPart = cut[0].trim();
-    const notePart = cut.slice(1).join('\n---\n').trim();
+    let promptPart, notePart, noteTitle = '';
+    if (pbType === 'midjourney' && cut.length > 1) {
+      promptPart = cut[cut.length - 1].trim();
+      notePart = cut.slice(0, -1).join('\n\n').trim();
+      noteTitle = '<b style="font-size:12px;display:block;margin-bottom:6px">🔍 7요소 분석</b>';
+    } else {
+      promptPart = cut[0].trim();
+      notePart = cut.slice(1).join('\n---\n').trim();
+    }
     $('#pb-out').innerHTML = `${esc(promptPart)}<button class="copy-btn" id="pb-copy">프롬프트 복사</button>`;
     $('#pb-copy').onclick = e => copyText(promptPart, e.target);
     $('#pb-note').innerHTML = notePart
-      ? `<div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.7;background:#fff;white-space:pre-wrap">${esc(notePart)}</div>` : '';
+      ? `<div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.7;background:#fff;white-space:pre-wrap">${noteTitle}${esc(notePart)}</div>` : '';
     $('#pb-guide').innerHTML = pbType === 'higgsfield'
       ? `<details style="border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:#fff">
           <summary style="font-size:12px;font-weight:600;cursor:pointer">힉스필드 Soul 2.0 사용 가이드 (펼치기)</summary>
