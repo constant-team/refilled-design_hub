@@ -66,7 +66,7 @@
       "title": "[브랜디드] 범용 브랜드 소개서",
       "project": "mrn2swe6yp3b1",
       "assignees": [
-        "m-yeonwoo"
+        "mrrby5mc4wsu9"
       ],
       "status": "req",
       "priority": "중간",
@@ -76,7 +76,8 @@
       "link": "https://www.figma.com/deck/vXLZk1EAWrrFXp3Kt8PLga",
       "files": [],
       "notes": "노션 요청 DB에서 자동 등록\n\n📄 노션 페이지: https://app.notion.com/p/39fbd60b5762807c9c19e0b5314ac7a7",
-      "createdAt": "2026-07-16T05:33:51.430Z"
+      "createdAt": "2026-07-16T05:33:51.430Z",
+      "mt": "2026-07-19T05:03:27.982Z"
     },
     {
       "id": "nt_384bd60b576280ddabbdc18ac779709b",
@@ -750,7 +751,7 @@
       "leadDays": 2
     }
   ],
-  "updatedAt": "2026-07-19T05:03:25.837Z",
+  "updatedAt": "2026-07-19T05:03:27.983Z",
   "seeded": false,
   "docs": [],
   "meta": {
