@@ -427,6 +427,12 @@
       "id": "m-minhyeon",
       "name": "방민현",
       "role": "인턴"
+    },
+    {
+      "id": "mrrc1k2kfoh4a",
+      "name": "김연우",
+      "role": "",
+      "mt": "2026-07-19T05:05:47.996Z"
     }
   ],
   "rituals": [
@@ -757,7 +763,7 @@
       "leadDays": 2
     }
   ],
-  "updatedAt": "2026-07-19T05:05:36.133Z",
+  "updatedAt": "2026-07-19T05:05:47.996Z",
   "seeded": false,
   "docs": [],
   "meta": {
