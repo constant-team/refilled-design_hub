@@ -663,7 +663,7 @@
             "member": "방민현",
             "text": "북미 아마존 부스터 프로 상세페이지 PC 버전 리뉴얼을 완료한다.",
             "criteria": "7/27(월)까지 1차 시안 완성하여 팀 내 공유",
-            "leadId": "",
+            "leadId": "mrni3yyy8h5a1",
             "done": false,
             "reason": ""
           }
@@ -688,7 +688,7 @@
         },
         "evalNote": ""
       },
-      "mt": "2026-07-20T06:25:01.177Z"
+      "mt": "2026-07-20T06:25:02.957Z"
     },
     {
       "id": "mrniseqf6bmnn",
@@ -851,7 +851,7 @@
       "leadDays": 2
     }
   ],
-  "updatedAt": "2026-07-20T06:25:01.177Z",
+  "updatedAt": "2026-07-20T06:25:02.957Z",
   "seeded": false,
   "docs": [],
   "meta": {
