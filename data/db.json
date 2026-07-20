@@ -802,11 +802,13 @@
       "createdAt": "2026-07-18T06:53:20.049Z",
       "data": {
         "commitments": [],
-        "leadWeek": {},
+        "leadWeek": {
+          "mrni3yyy8h5a1": 0
+        },
         "lagMonth": {},
         "evalNote": ""
       },
-      "mt": "2026-07-18T06:53:20.049Z"
+      "mt": "2026-07-20T06:25:35.560Z"
     }
   ],
   "archive": [
@@ -851,7 +853,7 @@
       "leadDays": 2
     }
   ],
-  "updatedAt": "2026-07-20T06:25:02.957Z",
+  "updatedAt": "2026-07-20T06:25:35.560Z",
   "seeded": false,
   "docs": [],
   "meta": {
