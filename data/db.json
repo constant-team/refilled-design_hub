@@ -553,7 +553,7 @@
           }
         ],
         "leadWeek": {
-          "mrni3yyyale7e": 1,
+          "mrni3yyyale7e": 2,
           "mrni3yyyfwum1": 2
         },
         "lagMonth": {
@@ -572,7 +572,7 @@
         },
         "evalNote": ""
       },
-      "mt": "2026-07-20T01:28:10.699Z"
+      "mt": "2026-07-20T01:28:29.007Z"
     },
     {
       "id": "mrnirg0fdi35d",
@@ -759,7 +759,7 @@
       "leadDays": 2
     }
   ],
-  "updatedAt": "2026-07-20T01:28:10.700Z",
+  "updatedAt": "2026-07-20T01:28:29.007Z",
   "seeded": false,
   "docs": [],
   "meta": {
