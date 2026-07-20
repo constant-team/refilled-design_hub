@@ -128,7 +128,7 @@
       "assignees": [
         "m-geuna"
       ],
-      "status": "req",
+      "status": "doing",
       "priority": "중간",
       "requester": "김수희",
       "requestedAt": "2026-07-16",
@@ -137,7 +137,7 @@
       "files": [],
       "notes": "노션 요청 DB에서 자동 등록 (기존 업무 일괄 이관)",
       "createdAt": "2026-07-16T05:40:14.000Z",
-      "mt": "2026-07-18T06:45:50.396Z"
+      "mt": "2026-07-20T07:19:15.837Z"
     },
     {
       "id": "nt_381bd60b576280cd8ef6ffd37e39d4de",
@@ -865,7 +865,7 @@
       "leadDays": 2
     }
   ],
-  "updatedAt": "2026-07-20T07:03:03.285Z",
+  "updatedAt": "2026-07-20T07:19:15.838Z",
   "seeded": false,
   "docs": [],
   "meta": {
