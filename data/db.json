@@ -152,12 +152,12 @@
       "priority": "보류",
       "requester": "강다현",
       "requestedAt": "2026-06-16",
-      "due": "2026-07-10",
+      "due": "2026-07-20",
       "link": "https://app.notion.com/381bd60b576280cd8ef6ffd37e39d4de",
       "files": [],
       "notes": "노션 요청 DB에서 자동 등록 (기존 업무 일괄 이관)",
       "createdAt": "2026-07-16T05:40:14.000Z",
-      "mt": "2026-07-19T05:06:22.813Z"
+      "mt": "2026-07-20T00:44:14.195Z"
     },
     {
       "id": "nt_39cbd60b5762807bb336ec7452ff2619",
@@ -531,7 +531,7 @@
             "criteria": "7/15(수)까지 1차 시안 완성 후 팀 내 피드백 / 7/17(금)까지 최종 안으로 단품 품목 썸네일 제작",
             "leadId": "mrni3yyyale7e",
             "done": false,
-            "reason": ""
+            "reason": "리소스 배분 문제로 올리브영 외 작업이 진행되지 않음"
           },
           {
             "id": "mrniqmczor3sm",
@@ -572,7 +572,7 @@
         },
         "evalNote": ""
       },
-      "mt": "2026-07-18T06:52:27.441Z"
+      "mt": "2026-07-20T00:44:59.267Z"
     },
     {
       "id": "mrnirg0fdi35d",
@@ -759,7 +759,7 @@
       "leadDays": 2
     }
   ],
-  "updatedAt": "2026-07-20T00:36:44.675Z",
+  "updatedAt": "2026-07-20T00:44:59.268Z",
   "seeded": false,
   "docs": [],
   "meta": {
