@@ -334,7 +334,7 @@
       "assignees": [
         "m-geuna"
       ],
-      "status": "req",
+      "status": "doing",
       "priority": "중간",
       "requester": "김민준",
       "requestedAt": "2026-07-20",
@@ -343,7 +343,7 @@
       "files": [],
       "notes": "노션 요청 DB에서 자동 등록\n\n📄 노션 페이지: https://app.notion.com/p/US-3a3bd60b576280d98ce9e04c1a9fe752",
       "createdAt": "2026-07-20T03:38:08.174Z",
-      "mt": "2026-07-20T03:51:29.351Z"
+      "mt": "2026-07-20T14:30:58.283Z"
     },
     {
       "id": "nt_3a3bd60b5762801aa3f8e768bf8c48ec",
@@ -936,7 +936,7 @@
       "leadDays": 2
     }
   ],
-  "updatedAt": "2026-07-20T14:30:35.876Z",
+  "updatedAt": "2026-07-20T14:30:58.284Z",
   "seeded": false,
   "docs": [],
   "meta": {
