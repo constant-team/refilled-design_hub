@@ -373,7 +373,7 @@
       "color": "#C2557E",
       "start": "2026-07-01",
       "end": "2026-07-30",
-      "owner": "m-yeonwoo",
+      "owner": "mrrc1k2kfoh4a",
       "mt": "2026-07-16T08:11:31.641Z"
     },
     {
@@ -382,7 +382,7 @@
       "color": "#A34A4A",
       "start": "2026-07-01",
       "end": "2026-07-31",
-      "owner": "m-yeonwoo",
+      "owner": "mrrc1k2kfoh4a",
       "mt": "2026-07-16T08:11:41.948Z"
     },
     {
@@ -417,16 +417,6 @@
       "id": "m-geuna",
       "name": "이근아",
       "role": "팀장"
-    },
-    {
-      "id": "m-yeonwoo",
-      "name": "김연우",
-      "role": "시니어"
-    },
-    {
-      "id": "m-minhyeon",
-      "name": "방민현",
-      "role": "인턴"
     },
     {
       "id": "mrrc1k2kfoh4a",
@@ -769,7 +759,7 @@
       "leadDays": 2
     }
   ],
-  "updatedAt": "2026-07-20T00:31:06.177Z",
+  "updatedAt": "2026-07-20T00:36:44.675Z",
   "seeded": false,
   "docs": [],
   "meta": {
