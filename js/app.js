@@ -65,6 +65,7 @@ function authBox() {
   if (!raw) return; // 게이트 미설정 or 로컬 테스트 → 표시 안 함
   try {
     const u = JSON.parse(decodeURIComponent(raw.slice(6)));
+    if (!store.settings.userName && u.n) { store.settings.userName = u.n; store.saveSettings(); } // 새 브라우저: 작성자명 자동 채움
     box.hidden = false;
     box.innerHTML = `<span class="au-name" title="${u.e || ''}">👤 ${u.n || u.e}</span>
       <a href="/api/auth/logout" class="au-out">로그아웃</a>`;
@@ -76,8 +77,7 @@ function authBox() {
   authBox();
   syncBadge();
   route();
-  if (store.hasRemote()) {
-    await store.pull();   // 팀 최신 데이터 반영
-    route();
-  }
+  // 서버 동기화 가능 여부는 pull()이 스스로 판별해요 (로그인 쿠키 기반 /api/db → 실패 시 브라우저 토큰 → 로컬)
+  const ok = await store.pull();
+  if (ok) route();   // 팀 최신 데이터 반영
 })();

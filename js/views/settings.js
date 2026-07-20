@@ -32,7 +32,7 @@ export function renderSettings(main) {
         <button class="btn primary" id="s-sync-save">저장 후 연결 테스트</button>
         <button class="btn" id="s-pull">지금 불러오기</button>
         <button class="btn" id="s-push">지금 올리기</button></div>
-      <div class="ai-note">토큰은 이 저장소 하나에 <b>Contents: Read and write</b> 권한만 주면 돼요. 팀원 각자 자기 토큰을 넣으면 커밋 기록으로 누가 수정했는지 남습니다.</div>
+      <div class="ai-note"><b>이제 개인 토큰은 선택사항이에요.</b> 구글 로그인이 켜진 배포에서는 서버가 팀 공용 토큰으로 자동 동기화해서, 이 칸을 비워둬도 팀 동기화가 됩니다. 직접 넣을 경우 이 저장소 하나에 <b>Contents: Read and write</b> 권한만 주면 돼요.</div>
     </div></div>
 
     <div class="card"><div class="card-h"><h3>AI 기능</h3></div><div class="card-b">

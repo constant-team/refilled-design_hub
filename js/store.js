@@ -33,6 +33,7 @@ class Store {
     });
     this.migrate();
     this.sha = null;          // GitHub 파일 sha (충돌 방지용)
+    this.serverMode = null;   // null=미확인 | true=서버(/api/db) 동기화 | false=서버 불가(레거시/로컬)
     this.status = 'local';    // local | synced | syncing | error
     this.listeners = [];
     this._pushTimer = null;
@@ -77,7 +78,49 @@ class Store {
     if (push && this.hasRemote()) this.schedulePush();
   }
 
-  hasRemote() { return !!(this.settings.githubToken && this.settings.repo); }
+  legacyRemote() { return !!(this.settings.githubToken && this.settings.repo); }
+  hasRemote() { return this.serverMode === true || this.legacyRemote(); }
+
+  /* ── 전송 계층: 서버(/api/db, 로그인 쿠키 인증) 우선, 실패 시 브라우저 토큰(레거시) ── */
+  async remoteRead() {
+    if (this.serverMode !== false) {
+      try {
+        const r = await fetch('/api/db');
+        if (r.ok) { this.serverMode = true; const j = await r.json(); return { status: 200, sha: j.sha, content: j.contentB64 }; }
+        if (r.status === 404) { this.serverMode = true; return { status: 404 }; }
+        this.serverMode = false; // 401(로그인 없음)·503(환경변수 미설정) 등 → 레거시로
+      } catch { this.serverMode = false; }
+    }
+    if (!this.legacyRemote()) return { status: 0 };
+    const res = await fetch(this.ghUrl(), { headers: this.ghHeaders() });
+    if (res.status === 404) return { status: 404 };
+    if (!res.ok) return { status: res.status };
+    const json = await res.json();
+    return { status: 200, sha: json.sha, content: json.content };
+  }
+
+  async remoteWrite(contentB64) {
+    if (this.serverMode === true) {
+      const r = await fetch('/api/db', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contentB64, sha: this.sha }),
+      });
+      const j = await r.json().catch(() => ({}));
+      return { ok: r.ok, conflict: r.status === 409, status: r.status, sha: j.sha };
+    }
+    const body = {
+      message: `hub: ${this.settings.userName || 'member'} 데이터 업데이트`,
+      content: contentB64, branch: this.settings.branch || 'main',
+    };
+    if (this.sha) body.sha = this.sha;
+    const res = await fetch(this.ghUrl().split('?')[0], {
+      method: 'PUT', headers: this.ghHeaders(), body: JSON.stringify(body),
+    });
+    if (res.status === 409 || res.status === 422) return { ok: false, conflict: true, status: res.status };
+    if (!res.ok) return { ok: false, conflict: false, status: res.status };
+    const json = await res.json();
+    return { ok: true, conflict: false, status: res.status, sha: json.content.sha };
+  }
 
   ghUrl() {
     return `https://api.github.com/repos/${this.settings.repo}/contents/data/db.json` +
@@ -91,15 +134,15 @@ class Store {
   }
 
   async pull() {
-    if (!this.hasRemote()) return false;
+    if (this.serverMode === false && !this.legacyRemote()) return false;
     this.status = 'syncing'; this.emit();
     try {
-      const res = await fetch(this.ghUrl(), { headers: this.ghHeaders() });
+      const res = await this.remoteRead();
+      if (res.status === 0) { this.status = 'local'; this.emit(); return false; }
       if (res.status === 404) { this.status = 'synced'; this.sha = null; this.emit(); return true; } // 파일 없음 → 첫 push에서 생성
-      if (!res.ok) throw new Error('GitHub 응답 ' + res.status);
-      const json = await res.json();
-      this.sha = json.sha;
-      const remote = JSON.parse(decodeURIComponent(escape(atob(json.content.replace(/\n/g, '')))));
+      if (res.status !== 200) throw new Error('원격 응답 ' + res.status);
+      this.sha = res.sha;
+      const remote = JSON.parse(decodeURIComponent(escape(atob(res.content.replace(/\n/g, '')))));
       if (this.db.seeded === true) {
         // 로컬이 데모 시드 상태 → 팀 데이터를 통째로 받아들여요 (샘플이 팀 DB에 섞이지 않게)
         this.db = { ...DEFAULT_DB, ...remote };
@@ -129,10 +172,9 @@ class Store {
 
   /* 원격 db.json을 읽기만 (로컬 상태 안 건드림) */
   async fetchRemote() {
-    const res = await fetch(this.ghUrl(), { headers: this.ghHeaders() });
-    if (!res.ok) throw new Error('GitHub 응답 ' + res.status);
-    const json = await res.json();
-    return { sha: json.sha, db: JSON.parse(decodeURIComponent(escape(atob(json.content.replace(/\n/g, ''))))) };
+    const res = await this.remoteRead();
+    if (res.status !== 200) throw new Error('원격 응답 ' + res.status);
+    return { sha: res.sha, db: JSON.parse(decodeURIComponent(escape(atob(res.content.replace(/\n/g, ''))))) };
   }
 
   /* 충돌 병합: 같은 항목은 '더 최근에 수정된 쪽(mt)'이 이겨요.
@@ -164,15 +206,8 @@ class Store {
     this.status = 'syncing'; this.emit();
     try {
       const content = btoa(unescape(encodeURIComponent(JSON.stringify(this.db, null, 2))));
-      const body = {
-        message: `hub: ${this.settings.userName || 'member'} 데이터 업데이트`,
-        content, branch: this.settings.branch || 'main'
-      };
-      if (this.sha) body.sha = this.sha;
-      const res = await fetch(this.ghUrl().split('?')[0], {
-        method: 'PUT', headers: this.ghHeaders(), body: JSON.stringify(body)
-      });
-      if (res.status === 409 || res.status === 422) {
+      const res = await this.remoteWrite(content);
+      if (res.conflict) {
         // 원격이 먼저 바뀜 (노션 미러링·다른 팀원) → 병합 후 1회 재시도
         if (retry) {
           const remote = await this.fetchRemote();
@@ -185,9 +220,8 @@ class Store {
         }
         throw new Error('동기화 충돌 — 다시 시도해주세요');
       }
-      if (!res.ok) throw new Error('GitHub 저장 실패 ' + res.status);
-      const json = await res.json();
-      this.sha = json.content.sha;
+      if (!res.ok) throw new Error('저장 실패 ' + res.status);
+      this.sha = res.sha;
       this.status = 'synced'; this.emit();
     } catch (e) {
       console.error(e); this.lastError = String(e.message || e);
@@ -280,7 +314,15 @@ class Store {
 
   /* ── 첨부 파일 업로드: 저장소 files/ 폴더에 커밋 ── */
   async uploadAttachment(fileName, base64) {
-    if (!this.hasRemote()) throw new Error('GitHub 연결이 필요해요 (설정에서 저장소·토큰 등록)');
+    if (this.serverMode === true) {
+      const r = await fetch('/api/file', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: fileName, base64 }),
+      });
+      if (!r.ok) throw new Error('업로드 실패 ' + r.status);
+      return await r.json();
+    }
+    if (!this.legacyRemote()) throw new Error('동기화 연결이 필요해요 (로그인 상태 또는 설정의 저장소·토큰 확인)');
     const safe = fileName.replace(/[\/\\?%*:|"<>]/g, '_');
     const path = `files/${Date.now().toString(36)}_${safe}`;
     const url = `https://api.github.com/repos/${this.settings.repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}`;
@@ -296,7 +338,19 @@ class Store {
   /* ── 첨부 파일 직접 다운로드 (GitHub API로 받아 blob 저장) ── */
   async downloadAttachment(f) {
     try {
-      if (f.path && this.hasRemote()) {
+      if (f.path && this.serverMode === true) {
+        const r = await fetch('/api/file?path=' + encodeURIComponent(f.path));
+        if (!r.ok) throw new Error(r.status);
+        const { contentB64 } = await r.json();
+        const bin = atob(contentB64.replace(/\n/g, ''));
+        const blob = new Blob([Uint8Array.from(bin, c => c.charCodeAt(0))]);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = f.name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+        return true;
+      }
+      if (f.path && this.legacyRemote()) {
         const url = `https://api.github.com/repos/${this.settings.repo}/contents/${f.path.split('/').map(encodeURIComponent).join('/')}?ref=${this.settings.branch || 'main'}`;
         const res = await fetch(url, { headers: { ...this.ghHeaders(), Accept: 'application/vnd.github.raw' } });
         if (!res.ok) throw new Error(res.status);
