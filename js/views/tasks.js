@@ -197,7 +197,9 @@ export function editTask(id, isRequest = false, preset = {}) {
     kind: preset.kind || (isRequest ? 'request' : 'project'),
     title: preset.title || '', project: preset.project || db.projects[0]?.id || '',
     assignees: [], status: 'req', priority: '중간',
-    requester: '', requestedAt: todayISO(), due: '', link: '', files: [],
+    // 요청 업무는 요청자를 현재 사용자(디렉토리 이름)로 기본 설정 — 수정 가능
+    requester: (isRequest || preset.kind === 'request') ? (store.settings.userName || '') : '',
+    requestedAt: todayISO(), due: '', link: '', files: [],
     notes: preset.notes || ''
   };
   const files = [...(t.files || [])];
