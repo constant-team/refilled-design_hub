@@ -83,8 +83,7 @@ async function authBox() {
     if (!name) return;
     if (!store.settings.userName) { store.settings.userName = name; store.saveSettings(); } // 새 브라우저: 작성자명 자동 채움
     box.hidden = false;
-    box.innerHTML = `<span class="au-name" title="${u.email || ''}">👤 ${name}</span>
-      <a href="/cdn-cgi/access/logout" class="au-out">로그아웃</a>`;
+    box.innerHTML = `<span class="au-name" title="${u.email || ''}">👤 ${name}</span>`;
   } catch {}
 }
 
