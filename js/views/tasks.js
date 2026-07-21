@@ -36,15 +36,14 @@ let doneOpen = false;
 
 export const subTabs = active => `
   <div class="subtabs">
-    <a href="#/tasks" class="${active === '' ? 'on' : ''}">통합 보드</a>
-    <a href="#/tasks/requests" class="${active === 'requests' ? 'on' : ''}">요청 업무</a>
+    <a href="#/tasks" class="${active !== 'projects' ? 'on' : ''}">요청 업무</a>
     <a href="#/tasks/projects" class="${active === 'projects' ? 'on' : ''}">프로젝트 타임라인</a>
   </div>`;
 
 export function renderTasks(main, sub = '') {
   if (sub === 'projects') return renderTimeline(main);
   const db = store.db;
-  const forceKind = sub === 'requests' ? 'request' : '';
+  const forceKind = 'request'; // 요청 업무 보드 = 요청만 (프로젝트는 타임라인 탭으로 분리)
   const kindMatch = (t, k) => k === 'project'
     ? (t.kind === 'project' || !!t.project)   // '프로젝트' = 프로젝트에 연결된 업무 전부
     : t.kind === k;
@@ -65,14 +64,10 @@ export function renderTasks(main, sub = '') {
 
   main.innerHTML = `
   <div class="page-head"><span class="eyebrow">Task Stream</span>
-    <h1>업무 보드</h1><p>${sub === 'requests' ? '타팀 등에서 인입된 요청 업무만 모아 봐요.' : '요청 업무와 프로젝트 업무를 한 흐름에서 관리해요. 요청 → 진행 중 → 컨펌중 → 완료.'}</p></div>
+    <h1>업무 보드</h1><p>타팀 등에서 인입된 요청 업무를 요청 → 진행 중 → 컨펌중 → 완료 흐름으로 관리해요. (팀 내부 프로젝트는 '프로젝트 타임라인' 탭)</p></div>
   ${subTabs(sub)}
   <div class="board-bar">
     <button class="btn primary" id="new-task">+ 업무 추가</button>
-    ${sub === 'requests' ? '' : `<div class="kind-chips">
-      ${[['', '전체'], ['request', '요청 업무'], ['project', '프로젝트']].map(([v, l]) =>
-        `<button class="chip ${filter.kind === v ? 'on' : ''}" data-kind="${v}">${l}</button>`).join('')}
-    </div>`}
     <select id="f-assignee"><option value="">담당자 전체</option>
       ${db.members.map(m => `<option value="${m.id}" ${filter.assignee === m.id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select>
     <select id="f-project"><option value="">프로젝트 전체</option>
