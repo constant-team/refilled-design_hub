@@ -34,7 +34,7 @@ class Store {
 
   constructor() {
     this.db = { ...DEFAULT_DB, ...loadJSON(LS_DB, {}) }; // 캐시 즉시 표시 → 연결 후 pull()이 원본으로 교체
-    this.settings = loadJSON(LS_SET, { userName: '', geminiKey: '', anthropicKey: '' });
+    this.settings = loadJSON(LS_SET, { userName: '' });
     this.migrate();
     this.connected = false;   // Supabase 연결·인증 완료 여부
     this.status = 'local';    // local | synced | syncing | error

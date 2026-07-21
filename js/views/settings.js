@@ -6,10 +6,10 @@ import { esc, toast, $ } from '../ui.js';
 const isLeader = m => /팀장|리드|lead/i.test(m.role || '') ? 1 : 0;
 
 export function renderSettings(main) {
-  const s = store.settings, db = store.db;
+  const db = store.db;
   main.innerHTML = `
   <div class="page-head"><span class="eyebrow">Settings</span>
-    <h1>설정</h1><p>AI 기능과 팀 알림을 연결해요. 키는 이 브라우저에만 저장됩니다. (팀 동기화는 자동 — 좌측 하단 배지에서 상태 확인)</p></div>
+    <h1>설정</h1><p>팀 알림과 구성원 정보를 확인해요. AI·팀 동기화는 사내 로그인만 돼 있으면 자동이에요 (좌측 하단 배지에서 상태 확인).</p></div>
 
   <div class="grid2">
     <div class="card"><div class="card-h"><h3>디자인팀 구성원</h3></div><div class="card-b">
@@ -23,12 +23,8 @@ export function renderSettings(main) {
     </div></div>
 
     <div class="card"><div class="card-h"><h3>AI 기능</h3></div><div class="card-b">
-      <div class="field"><label>Google Gemini API 키 <span class="muted" style="font-weight:400">(무료 · 권장)</span></label>
-        <input id="s-gkey" type="password" value="${esc(s.geminiKey || '')}" placeholder="AIza..."></div>
-      <div class="field"><label>Anthropic API 키 <span class="muted" style="font-weight:400">(선택 · 종량 과금)</span></label>
-        <input id="s-akey" type="password" value="${esc(s.anthropicKey)}" placeholder="sk-ant-..."></div>
-      <button class="btn primary" id="s-akey-save">저장</button>
-      <div class="ai-note">메일 생성·트렌드 리서치·AI 추론 검색·프롬프트 다듬기에 사용돼요. <b>Gemini 키는 aistudio.google.com/apikey에서 구글 로그인만으로 무료 발급</b>되고, Gemini 키가 있으면 그걸 우선 사용해요. 키는 서버로 전송되지 않고 각자 브라우저(localStorage)에만 저장돼요.</div>
+      <p class="hint" style="margin-top:0">메일 생성·트렌드 리서치·AI 추론 검색·프롬프트 다듬기에 쓰여요. <b>키 설정이 필요 없어요</b> — 회사 키가 서버에 등록돼 있어 사내 로그인만 돼 있으면 바로 사용돼요.</p>
+      <div class="ai-note">API 키는 서버(환경변수)에만 있고 브라우저로 전송되지 않아요. 사용량은 회사 계정에서 관리돼요.</div>
     </div></div>
 
     <div class="card"><div class="card-h"><h3>팀 알림 (Slack)</h3></div><div class="card-b">
@@ -47,12 +43,6 @@ export function renderSettings(main) {
       <div class="ai-note">팀 데이터는 Supabase에 저장·백업돼요. 화면이 이상하거나 데이터가 안 맞아 보이면 이 버튼을 눌러주세요 — 이 브라우저의 캐시를 지우고 팀 데이터를 처음부터 다시 받아와요 (팀 데이터는 안전해요).</div>
     </div></div>
   </div>`;
-
-  $('#s-akey-save').onclick = () => {
-    s.geminiKey = $('#s-gkey').value.trim();
-    s.anthropicKey = $('#s-akey').value.trim();
-    store.saveSettings(); toast('API 키를 저장했어요');
-  };
 
   $('#s-slack-save').onclick = () => {
     const url = $('#s-slack').value.trim();

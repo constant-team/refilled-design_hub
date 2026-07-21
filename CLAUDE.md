@@ -28,6 +28,10 @@
 - 구성원 정보: 사내 디렉토리 API 자동 동기화 (`js/directory.js` → `store.syncDirectory()`).
   디자인팀 필터는 `teamName`에 '디자인' 포함 기준. 슬랙 멘션도 디렉토리 `slackUserId` 우선,
   `js/slackmap.js` 정적 맵은 폴백 (안정 확인 후 제거 가능)
+- AI 호출: 브라우저 직접 호출 → **서버 프록시 `/api/ai`** (키는 `GEMINI_API_KEY`·`ANTHROPIC_API_KEY`
+  env에만, 브라우저 노출 없음). Gemini 무료 우선 → Claude 폴백. 프록시는 CF Access를 직접 검증하는
+  **fail-closed** — 프로덕션/프리뷰에선 검증 통과자만, 로컬(vercel dev)만 예외. `CF_ACCESS_AUD` 없으면
+  검증 불가라 프록시가 401로 잠김(키는 안전)
 - 파일 업로드: 사내 파일허브(`data.constanthub.kr/api/files/upload`) → URL만 DB 저장 (`js/files.js`).
   클라이언트는 모든 파일을 업로드 시도(50MB) — **허용 확장자는 파일허브 서버가 판정**하고, 막힌 파일은
   서버 에러 메시지가 그대로 표시됨. 문서·디자인 파일이 막히면 파일허브 툴 설정(`tool=refilled-design-hub`)에서

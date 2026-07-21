@@ -1,94 +1,26 @@
-/* ai.js — LLM 브라우저 직접 호출
-   Google Gemini(무료 등급) 우선, Anthropic 키가 있으면 Claude 사용.
-   설정 > AI 기능에서 키를 등록하세요. */
-import { store } from './store.js';
+/* ai.js — LLM 호출 (서버 프록시 /api/ai 경유)
+   키는 서버 env(GEMINI_API_KEY·ANTHROPIC_API_KEY)에만 있고 브라우저엔 없어요.
+   서버가 Gemini(무료) 우선 → Claude 폴백으로 호출하고 텍스트만 돌려줘요. */
 
-/* ── Google Gemini (aistudio.google.com 무료 키) ── */
-/* 모델 폴백 체인: 모델 은퇴(404)뿐 아니라 무료 사용량 초과(429)도 다음 모델로 자동 폴백 */
-const GEMINI_MODELS = ['gemini-3.5-flash', 'gemini-3.1-flash', 'gemini-2.5-flash'];
-let geminiModelIdx = 0; // 성공한 모델을 기억해 다음 호출부터 바로 사용
-
-function friendlyGeminiErr(status, raw) {
-  if (status === 429 || /quota|RESOURCE_EXHAUSTED|rate.?limit/i.test(raw)) {
-    const e = new Error('Gemini 무료 사용량 한도를 초과했어요. 몇 분 뒤 다시 시도하거나, 내일 한도가 초기화된 후 사용해주세요. (설정에서 다른 구글 계정 키로 교체도 가능해요)');
-    e.quota = true; return e;
+/* ── 공용 진입점: 서버 프록시 호출 ── */
+async function callLLM({ system, prompt, images = null, tools = null, maxTokens = 1500 }) {
+  let res;
+  try {
+    res = await fetch('/api/ai', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ system, prompt, images, tools, maxTokens }),
+    });
+  } catch {
+    throw new Error('AI 서버에 연결하지 못했어요. 잠시 뒤 다시 시도해주세요.');
   }
-  if (/API key not valid|API_KEY_INVALID/i.test(raw))
-    return new Error('Gemini API 키가 올바르지 않아요. 설정 > AI 기능에서 키를 확인해주세요.');
-  return new Error(raw || 'Gemini API 오류 ' + status);
-}
-
-async function callGemini({ system, prompt, images = null, tools = null, maxTokens = 1500 }) {
-  const key = store.settings.geminiKey;
-  const parts = [];
-  (images || []).forEach(im => parts.push({ inline_data: { mime_type: im.mime, data: im.data } }));
-  parts.push({ text: prompt });
-  const body = {
-    contents: [{ role: 'user', parts }],
-    generationConfig: { maxOutputTokens: Math.max(maxTokens, 2048) },
-  };
-  if (system) body.system_instruction = { parts: [{ text: system }] };
-  if (tools) body.tools = [{ google_search: {} }]; // 웹 검색 요청 → Gemini 그라운딩으로 매핑
-
-  let res = null, lastStatus = 0, lastErr = '';
-  for (let i = geminiModelIdx; i < GEMINI_MODELS.length; i++) {
-    res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODELS[i]}:generateContent?key=${encodeURIComponent(key)}`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    if (res.ok) { geminiModelIdx = i; break; }
-    const err = await res.json().catch(() => ({}));
-    lastStatus = res.status;
-    lastErr = err?.error?.message || ('Gemini API 오류 ' + res.status);
-    // 폴백 대상: 모델 은퇴/미지원(404) + 해당 모델 사용량 초과(429). 키 오류 등은 즉시 중단
-    const fallbackable = res.status === 404 || res.status === 429
-      || /no longer available|not found|not supported|quota|RESOURCE_EXHAUSTED/i.test(lastErr);
-    if (!fallbackable) throw friendlyGeminiErr(res.status, lastErr);
-    res = null;
-  }
-  if (!res) throw friendlyGeminiErr(lastStatus, lastErr);
-  const data = await res.json();
-  const out = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('\n').trim();
-  if (!out) throw new Error('Gemini 응답이 비어 있어요' + (data.candidates?.[0]?.finishReason ? ` (${data.candidates[0].finishReason})` : ''));
-  return out;
-}
-
-/* ── 공용 진입점: Gemini 키 → Gemini, 아니면 Anthropic ── */
-function callLLM(args) {
-  if (store.settings.geminiKey) return callGemini(args);
-  if (store.settings.anthropicKey) return callClaude(args);
-  throw new Error('설정 > AI 기능에서 Gemini(무료) 또는 Anthropic API 키를 먼저 등록해주세요.');
-}
-
-async function callClaude({ system, prompt, images = null, tools = null, maxTokens = 1500 }) {
-  const key = store.settings.anthropicKey;
-  if (!key) throw new Error('설정에서 Anthropic API 키를 먼저 등록해주세요.');
-  const content = [];
-  (images || []).forEach(im => content.push({ type: 'image', source: { type: 'base64', media_type: im.mime, data: im.data } }));
-  content.push({ type: 'text', text: prompt });
-  const body = {
-    model: 'claude-sonnet-4-6',
-    max_tokens: maxTokens,
-    messages: [{ role: 'user', content }],
-  };
-  if (system) body.system = system;
-  if (tools) body.tools = tools;
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': key,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify(body),
-  });
+  const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || 'API 오류 ' + res.status);
+    if (res.status === 401) throw new Error('사내 로그인이 필요해요 — 새 탭에서 로그인 후 다시 시도해주세요.');
+    const e = new Error(data.error || 'AI 오류 ' + res.status);
+    if (data.quota) e.quota = true;
+    throw e;
   }
-  const data = await res.json();
-  return data.content.filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+  return data.text;
 }
 
 const BRAND_SYSTEM = `당신은 리필드(Refilled) 헤어케어 브랜드 BX 디자인팀의 어시스턴트입니다.
