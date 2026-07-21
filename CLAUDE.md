@@ -29,8 +29,9 @@
   디자인팀 필터는 `teamName`에 '디자인' 포함 기준. 슬랙 멘션도 디렉토리 `slackUserId` 우선,
   `js/slackmap.js` 정적 맵은 폴백 (안정 확인 후 제거 가능)
 - 파일 업로드: 사내 파일허브(`data.constanthub.kr/api/files/upload`) → URL만 DB 저장 (`js/files.js`).
-  **이미지 전용**(jpg/png/gif/webp, 50MB) — 그 외 파일은 링크 첨부로 유도. AI 스튜디오의 base64는
-  LLM 전송용(비저장)이라 표준 예외
+  클라이언트는 모든 파일을 업로드 시도(50MB) — **허용 확장자는 파일허브 서버가 판정**하고, 막힌 파일은
+  서버 에러 메시지가 그대로 표시됨. 문서·디자인 파일이 막히면 파일허브 툴 설정(`tool=refilled-design-hub`)에서
+  확장자 허용 필요 (테크팀). AI 스튜디오의 base64는 LLM 전송용(비저장)이라 표준 예외
 
 **정리 예정 (안정화 후):**
 - `api/db.js`(구 GitHub 동기화, 현재 미사용) 제거 — 클라이언트는 Supabase 직접 접근

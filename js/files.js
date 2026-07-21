@@ -1,13 +1,10 @@
 /* files.js — 사내 파일허브 업로드 (사내 표준: 파일은 파일허브, DB에는 URL만)
    인증은 Cloudflare Access 쿠키(credentials:include) — 이 앱이 constanthub.kr 서브도메인
    + Access 뒤에 배포되어 있어야 동작해요. 401/리다이렉트 시 로그인 안내 에러를 던져요.
-   제한: 이미지 전용(jpg/jpeg/png/gif/webp), 최대 50MB. */
+   허용 확장자·용량은 파일허브 서버가 판정해요 — 막힌 파일은 서버 메시지가 그대로 표시돼요. */
 
 const FILE_API = 'https://data.constanthub.kr';
 const TOOL = 'refilled-design-hub';
-
-export const IMAGE_MIMES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-export const isUploadable = file => IMAGE_MIMES.includes(file?.type);
 
 /** File/Blob 업로드 → 파일허브 URL 반환. 실패 시 사용자 안내 메시지를 담은 Error를 던져요. */
 export async function uploadFile(file, name) {
