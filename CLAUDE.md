@@ -28,17 +28,16 @@
 - 구성원 정보: 사내 디렉토리 API 자동 동기화 (`js/directory.js` → `store.syncDirectory()`).
   디자인팀 필터는 `teamName`에 '디자인' 포함 기준. 슬랙 멘션도 디렉토리 `slackUserId` 우선,
   `js/slackmap.js` 정적 맵은 폴백 (안정 확인 후 제거 가능)
-
-**남은 차이 (새 기능 작성 시 표준을 따를 것):**
-
-| 항목 | 현재 | 표준 |
-|---|---|---|
-| 파일 저장 | `files/` 폴더에 Git 커밋 (`/api/file`) | 사내 파일 API (`data.constanthub.kr/api/files/upload`) → URL만 저장. constanthub.kr 서브도메인 연결 완료 — 전환 가능 상태 |
+- 파일 업로드: 사내 파일허브(`data.constanthub.kr/api/files/upload`) → URL만 DB 저장 (`js/files.js`).
+  **이미지 전용**(jpg/png/gif/webp, 50MB) — 그 외 파일은 링크 첨부로 유도. AI 스튜디오의 base64는
+  LLM 전송용(비저장)이라 표준 예외
 
 **정리 예정 (안정화 후):**
-- `api/db.js`(구 GitHub 동기화)와 `api/db.js`·`api/file.js`의 구 쿠키(hub_s) 폴백 — CF Access·Supabase 안정 확인 후 제거
-- `data/db.json` — 읽기 전용 백업으로 유지, 더 이상 갱신되지 않음
-- 브릿지 CORS 제약: Supabase 동기화는 `*.constanthub.kr`·`localhost:3000/3001`에서만 동작 (vercel.app 기본 도메인 불가)
+- `api/db.js`(구 GitHub 동기화, 현재 미사용) 제거 — 클라이언트는 Supabase 직접 접근
+- `api/file.js` — 업로드(POST)는 파일허브로 대체돼 미사용. 다운로드(GET)는 구 `files/` 첨부 조회에만 필요, 구 첨부 소진 후 제거
+- `api/db.js`·`api/file.js`의 구 쿠키(hub_s) 폴백 — CF Access 안정 확인 후 제거
+- `data/db.json`·`files/` — 읽기 전용, 더 이상 갱신되지 않음
+- 브릿지·파일허브 CORS 제약: `*.constanthub.kr`·`localhost:3000/3001`에서만 동작 (vercel.app 기본 도메인 불가)
 
 ## 주의
 

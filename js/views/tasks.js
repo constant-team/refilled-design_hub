@@ -1,5 +1,6 @@
 /* tasks.js — 업무 보드 (요청 → 진행 중 → 컨펌중 → 완료 아카이브) */
 import { store, uid, todayISO } from '../store.js';
+import { isUploadable } from '../files.js';
 import { esc, openModal, closeModal, toast, dday, fmtDate, STATUS, PRIORITY, $ } from '../ui.js';
 import { renderTimeline } from './timeline.js';
 
@@ -254,12 +255,12 @@ export function editTask(id, isRequest = false, preset = {}) {
         <input id="t-link" value="${esc(t.link || '')}" placeholder="https://" style="flex:1">
         <button class="btn sm" id="t-linkopen" ${t.link ? '' : 'disabled'}>열기 ↗</button>
       </div></div>
-    <div class="field"><label>파일 첨부 <span class="muted" style="font-weight:400">(최대 5개 · 개당 8MB)</span></label>
+    <div class="field"><label>파일 첨부 <span class="muted" style="font-weight:400">(이미지 최대 5개 · 개당 50MB / 그 외 파일은 링크로)</span></label>
       <div id="att-list">${fileRows()}</div>
       <div style="display:flex;gap:6px;margin-top:6px">
-        <button class="btn sm" id="att-file">파일 선택</button>
+        <button class="btn sm" id="att-file">이미지 업로드</button>
         <button class="btn sm" id="att-link">링크로 추가</button>
-        <input type="file" id="att-input" multiple hidden>
+        <input type="file" id="att-input" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>
         <span id="att-status" class="muted" style="font-size:11px;align-self:center"></span>
       </div>
     </div>
@@ -346,23 +347,15 @@ export function editTask(id, isRequest = false, preset = {}) {
       });
     };
     bindDel();
-    q('#att-file').onclick = () => {
-      if (!store.hasRemote()) return toast('파일 업로드는 GitHub 연결 후 가능해요 (설정). 링크로 추가는 바로 가능해요.', true);
-      q('#att-input').click();
-    };
+    q('#att-file').onclick = () => q('#att-input').click();
     q('#att-input').onchange = async e => {
       for (const file of [...e.target.files]) {
         if (files.length >= 5) { toast('첨부는 최대 5개까지예요', true); break; }
-        if (file.size > 8 * 1024 * 1024) { toast(`${file.name}: 8MB를 넘어요. 링크로 첨부해주세요.`, true); continue; }
+        if (!isUploadable(file)) { toast(`${file.name}: 이미지(jpg·png·gif·webp)만 업로드돼요. 다른 파일은 링크로 첨부해주세요.`, true); continue; }
+        if (file.size > 50 * 1024 * 1024) { toast(`${file.name}: 50MB를 넘어요. 링크로 첨부해주세요.`, true); continue; }
         q('#att-status').textContent = `${file.name} 업로드 중…`;
         try {
-          const base64 = await new Promise((res, rej) => {
-            const r = new FileReader();
-            r.onload = () => res(r.result.split(',')[1]);
-            r.onerror = () => rej(new Error('읽기 실패'));
-            r.readAsDataURL(file);
-          });
-          files.push(await store.uploadAttachment(file.name, base64));
+          files.push(await store.uploadAttachment(file));
           redraw();
         } catch (err) { toast(`${file.name}: ${err.message}`, true); }
       }

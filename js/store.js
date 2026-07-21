@@ -1,6 +1,7 @@
 import { mentionizeNames } from './slackmap.js';
 import { supabase, supaState, initSupabase } from './supabase.js';
 import { fetchDirectory } from './directory.js';
+import { uploadFile } from './files.js';
 /* store.js — 단일 원천 데이터 스토어 (Supabase 행 단위 저장, 사내 표준)
    localStorage는 즉시 표시용 캐시 — 원본은 Supabase 도메인 테이블.
    저장은 변경된 행만 upsert/delete 해요 (통짜 JSON 저장 금지 — 동시 수정 유실 방지). */
@@ -348,17 +349,14 @@ class Store {
     });
   }
 
-  /* ── 첨부 파일 업로드/다운로드 (서버 경유 — 추후 사내 파일허브로 전환 예정) ── */
-  async uploadAttachment(fileName, base64) {
-    const r = await fetch('/api/file', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: fileName, base64 }),
-    });
-    if (!r.ok) throw new Error('업로드 실패 ' + r.status);
-    return await r.json();
+  /* ── 첨부 파일: 사내 파일허브 업로드, DB에는 URL만 저장 (사내 표준) ── */
+  async uploadAttachment(file) {
+    const url = await uploadFile(file);      // 실패 시 안내 메시지가 담긴 Error를 던져요
+    return { name: file.name, url };
   }
 
   async downloadAttachment(f) {
+    // 구 첨부(files/ 폴더 커밋분)는 서버 경유로 받아요 — path가 있는 레거시 레코드
     try {
       if (f.path) {
         const r = await fetch('/api/file?path=' + encodeURIComponent(f.path));
@@ -373,7 +371,7 @@ class Store {
         return true;
       }
     } catch { /* API 실패 시 원본 URL로 폴백 */ }
-    window.open(f.url, '_blank');
+    window.open(f.url, '_blank'); // 파일허브 URL은 그대로 열면 돼요
     return true;
   }
 
