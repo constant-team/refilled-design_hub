@@ -1,6 +1,9 @@
-/* settings.js — 설정: 팀 동기화 · API 키 · 팀원 관리 · 백업 */
+/* settings.js — 설정: 구성원(읽기 전용) · API 키 · 슬랙 알림 · 문제 해결 */
 import { store } from '../store.js';
 import { esc, toast, $ } from '../ui.js';
+
+/* 팀장(리더)을 목록 맨 위에 — 직책 기준 */
+const isLeader = m => /팀장|리드|lead/i.test(m.role || '') ? 1 : 0;
 
 export function renderSettings(main) {
   const s = store.settings, db = store.db;
@@ -12,8 +15,8 @@ export function renderSettings(main) {
     <div class="card"><div class="card-h"><h3>디자인팀 구성원</h3></div><div class="card-b">
       <p class="hint" style="margin-top:0">업무 보드에서 담당자로 지정할 수 있는 목록이에요 — 사내 디렉토리에서 자동 동기화돼요.</p>
       <div id="s-members" style="margin:8px 0">
-        ${db.members.map(m => `<div class="goal-row" data-mid="${m.id}">
-          <span class="gt">${esc(m.name)} <span class="muted" style="font-size:11px">${esc(m.role || '')}</span></span></div>`).join('')
+        ${[...db.members].sort((a, b) => isLeader(b) - isLeader(a)).map(m => `<div class="goal-row" data-mid="${m.id}">
+          <span class="gt">${isLeader(m) ? '👑 ' : ''}${esc(m.name)} <span class="muted" style="font-size:11px">${esc(m.role || '')}</span></span></div>`).join('')
           || '<p class="hint">팀 동기화가 연결되면 자동으로 채워져요</p>'}
       </div>
       <p class="hint">입사·퇴사는 사내 디렉토리(data.constanthub.kr) 기준으로 반영돼요. 목록이 비어 있으면 좌측 하단 배지로 연결 상태를 확인해주세요.</p>
@@ -40,9 +43,8 @@ export function renderSettings(main) {
 
     <div class="card"><div class="card-h"><h3>문제 해결</h3></div><div class="card-b">
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn" id="s-export">JSON 내보내기</button>
         <button class="btn danger" id="s-reset">서버에서 다시 불러오기</button></div>
-      <div class="ai-note">팀 데이터는 Supabase에 저장·백업돼요. 화면이 이상하거나 데이터가 안 맞아 보이면 <b>"서버에서 다시 불러오기"</b>를 눌러주세요 — 이 브라우저의 캐시를 지우고 팀 데이터를 처음부터 다시 받아와요 (팀 데이터는 안전해요). 내보내기는 데이터를 파일로 뽑아 볼 때 쓰는 버튼이에요.</div>
+      <div class="ai-note">팀 데이터는 Supabase에 저장·백업돼요. 화면이 이상하거나 데이터가 안 맞아 보이면 이 버튼을 눌러주세요 — 이 브라우저의 캐시를 지우고 팀 데이터를 처음부터 다시 받아와요 (팀 데이터는 안전해요).</div>
     </div></div>
   </div>`;
 
@@ -66,12 +68,6 @@ export function renderSettings(main) {
     toast('테스트를 보냈어요 — 슬랙 채널을 확인해주세요');
   };
 
-  $('#s-export').onclick = () => {
-    const blob = new Blob([JSON.stringify(store.db, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = `refilled-hub-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-  };
   $('#s-reset').onclick = () => {
     if (!confirm('이 브라우저의 캐시를 지우고 팀 데이터를 서버에서 다시 받아올까요? (팀 데이터는 유지됩니다)')) return;
     localStorage.removeItem('rfhub_db_v1'); location.reload();
