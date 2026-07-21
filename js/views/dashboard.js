@@ -1,6 +1,8 @@
 /* dashboard.js — 메인 써머리 */
 import { store, todayISO } from '../store.js';
-import { esc, fmtDate, dday, STATUS } from '../ui.js';
+import { esc, fmtDate, dday } from '../ui.js';
+
+let dashMonth = null; // 캘린더 표시 월(YYYY-MM) — prev/next로 이동
 
 const taskRow = t => `
   <div class="tk-row">
@@ -47,60 +49,37 @@ export function renderDashboard(main) {
     if (list.length) upcoming[d] = list;
   }
 
-  // 간트 윈도우: -7일 ~ +28일
-  const winStart = new Date(todayISO(-7)), winEnd = new Date(todayISO(28));
-  const span = winEnd - winStart;
-  const pct = d => Math.max(0, Math.min(100, (new Date(d) - winStart) / span * 100));
-  const weekMarks = [0, 7, 14, 21, 28].map(off => {
-    const d = todayISO(off - 7);
-    return `<span style="left:${pct(d)}%">${d.slice(5).replace('-', '/')}</span>`;
-  }).join('') + `<span class="g-today-lb" style="left:${pct(today)}%">오늘</span>`;
-  /* 주말 음영: 창 시작 요일 기준으로 토·일 반복 */
-  const dow0 = new Date(todayISO(-7) + 'T00:00:00').getDay();
-  const satOff = (6 - dow0 + 7) % 7;
-  const dayPct = 100 / 35;
-  // 바: 시작일·마지막일 칸만 진한 색, 중간은 연한 색
-  const gBarBg = (c, w, dp) => {
-    if (w <= dp * 2) return c;
-    const capPct = Math.min(48, (dp / w) * 100); // 바 내부 기준 하루 폭(%)
-    const light = `color-mix(in srgb, ${c} 22%, #eef1f5)`;
-    return `linear-gradient(90deg, ${c} 0 ${capPct.toFixed(2)}%, ${light} ${capPct.toFixed(2)}% ${(100 - capPct).toFixed(2)}%, ${c} ${(100 - capPct).toFixed(2)}% 100%)`;
-  };
-  const wkndBg = `background-image:repeating-linear-gradient(90deg,rgba(120,120,120,.08) 0 ${(2 * dayPct).toFixed(3)}%,transparent ${(2 * dayPct).toFixed(3)}% ${(7 * dayPct).toFixed(3)}%);background-position:${(satOff * dayPct).toFixed(3)}% 0`;
-
-  // 프로젝트별 마일스톤(하위 업무의 milestones) 기준으로 바·다음 일정 계산
-  const projMs = pid => db.tasks.filter(t => t.kind === 'project' && t.project === pid)
-    .flatMap(t => (t.milestones || []).map(m => m.date)).filter(Boolean).sort();
-  const ganttRows = db.projects.filter(p => !p.archived)
-    .map(p => ({ p, ms: projMs(p.id) }))
-    .sort((a, b) => {
-      const an = a.ms.find(d => d >= today) || a.ms.slice(-1)[0] || '9999';
-      const bn = b.ms.find(d => d >= today) || b.ms.slice(-1)[0] || '9999';
-      return an < bn ? -1 : 1;
-    })
-    .map(({ p, ms }) => {
-    const cnt = db.tasks.filter(t => t.kind === 'project' && t.project === p.id).length;
-    const next = ms.find(d => d >= today);
-    const lo = ms[0], hi = ms[ms.length - 1];
-    const l = lo ? pct(lo) : 0, r = hi ? pct(hi) : 0, w = Math.max(2, r - l);
-    const ddCls = next ? (next < today ? 'over' : (Math.round((new Date(next + 'T00:00:00') - new Date(today + 'T00:00:00')) / 864e5) <= 7 ? 'warn' : '')) : '';
-    return `<div class="g-row g-link" onclick="location.hash='#/tasks/projects'" title="클릭하면 프로젝트 타임라인으로 이동">
-      <div class="g-name">${esc(p.name)}<span>${next ? `<b class="tl-dd ${ddCls}">다음 ${dday(next)}</b> · ` : ''}${esc(store.memberName(p.owner))} · 하위 ${cnt}건</span></div>
-      <div class="g-track" style="${wkndBg}">
-        ${ms.length ? `<div class="g-bar" style="left:${l}%;width:${w}%;background:${gBarBg(p.color || 'var(--accent)', w, dayPct)}"></div>` : '<span style="position:absolute;left:8px;top:5px;font-size:10px;color:#9AA1AC">일정 미정</span>'}
-        <div class="g-today" style="left:${pct(today)}%"></div>
-      </div>
-    </div>`;
-  }).join('') || '<div class="empty">진행 중인 프로젝트가 없어요. 업무 보드 → 프로젝트 타임라인에서 추가해주세요.</div>';
-
-  const assignCols = db.members.map(m => {
-    const mine = open.filter(t => (t.assignees || []).includes(m.id))
-      .sort((a, b) => (a.due || '9') < (b.due || '9') ? -1 : 1);
-    return `<div class="assign-col">
-      <h4>${esc(m.name)} <span class="cnt">${mine.length}건</span></h4>
-      ${mine.slice(0, 5).map(taskRow).join('') || '<div class="empty">배정된 업무 없음</div>'}
-    </div>`;
+  // ── 월 캘린더: 요청 마감 + 프로젝트 마일스톤을 담당자 색으로 (담당자별 뷰를 색으로 흡수) ──
+  if (!dashMonth) dashMonth = today.slice(0, 7);
+  const MCOLORS = ['#006DE2', '#0F7B5F', '#B7791F', '#6B5CA5', '#8A3B5E', '#3B7A8A', '#C2410C', '#0891B2', '#7C3AED', '#DB2777'];
+  const memColor = {}; db.members.forEach((m, i) => memColor[m.id] = MCOLORS[i % MCOLORS.length]);
+  const colorOf = ids => { const id = (ids || [])[0]; return id && memColor[id] ? memColor[id] : '#9AA1AC'; };
+  const [cy, cm] = dashMonth.split('-').map(Number);
+  const monthLabel = `${cy}년 ${cm}월`;
+  const daysInMonth = new Date(cy, cm, 0).getDate();
+  const firstDow = new Date(cy, cm - 1, 1).getDay();
+  const evByDate = {};
+  const pushEv = (date, ev) => { if (String(date).slice(0, 7) !== dashMonth) return; (evByDate[date] = evByDate[date] || []).push(ev); };
+  db.tasks.filter(t => t.kind === 'request' && t.status !== 'done' && t.due)
+    .forEach(t => pushEv(t.due, { label: t.title, color: colorOf(t.assignees), who: store.assigneeNames(t), route: '#/tasks', kind: '요청' }));
+  db.projects.filter(p => !p.archived).forEach(p =>
+    db.tasks.filter(t => t.kind === 'project' && t.project === p.id && t.tlStatus !== 'done')
+      .forEach(t => (t.milestones || []).forEach(m => { if (m.date) pushEv(m.date, { label: `${p.name}·${t.title}`, color: colorOf(t.assignees), who: store.assigneeNames(t), route: '#/tasks/projects', kind: '프로젝트' }); })));
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7) cells.push(null);
+  const dowLb = ['일', '월', '화', '수', '목', '금', '토'];
+  const calHead = dowLb.map((d, i) => `<div class="cal-dow ${i === 0 ? 'sun' : i === 6 ? 'sat' : ''}">${d}</div>`).join('');
+  const calCells = cells.map(d => {
+    if (d === null) return '<div class="cal-cell empty"></div>';
+    const iso = `${dashMonth}-${String(d).padStart(2, '0')}`;
+    const evs = evByDate[iso] || [];
+    const chips = evs.slice(0, 3).map(e => `<div class="cal-ev" style="background:${e.color}1e;color:${e.color}" title="[${e.kind}] ${esc(e.label)} · ${esc(e.who)}" onclick="location.hash='${e.route}'">${esc(e.label)}</div>`).join('');
+    const more = evs.length > 3 ? `<div class="cal-more" title="${esc(evs.slice(3).map(e => e.label).join(', '))}">+${evs.length - 3}건 더</div>` : '';
+    return `<div class="cal-cell ${iso === today ? 'today' : ''}"><div class="cal-daynum">${d}</div>${chips}${more}</div>`;
   }).join('');
+  const calLegend = db.members.map(m => `<span><i style="background:${memColor[m.id]}"></i>${esc(m.name)}</span>`).join('') + '<span><i style="background:#9AA1AC"></i>미지정</span>';
 
   const d = new Date();
   main.innerHTML = `
@@ -138,12 +117,38 @@ export function renderDashboard(main) {
         || '<div class="empty">7일 내 예정 일정이 없어요</div>'}</div></div>
   </div>
 
-  <div class="card" style="margin-bottom:20px"><div class="card-h"><h3>프로젝트 타임라인</h3><span class="sub">마일스톤 기준 · 다음 일정 임박순</span></div>
-    <div class="card-b gantt">
-      <div class="g-scale"><div></div><div class="g-scale-track">${weekMarks}</div></div>
-      ${ganttRows}
-    </div></div>
+  <style>
+    .cal-toolbar{display:flex;align-items:center;gap:6px}
+    .cal-legend{display:flex;flex-wrap:wrap;gap:10px 14px;margin-bottom:12px;font-size:11.5px;color:var(--muted,#667)}
+    .cal-legend span{display:flex;align-items:center;gap:5px}
+    .cal-legend i{width:10px;height:10px;border-radius:3px;display:inline-block;flex-shrink:0}
+    .cal-grid-head{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}
+    .cal-dow{text-align:center;font-size:11.5px;font-weight:700;color:#8a909a}
+    .cal-dow.sun{color:#DC2626}.cal-dow.sat{color:#2563EB}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+    .cal-cell{min-height:94px;border:1px solid var(--line);border-radius:10px;padding:5px 6px;overflow:hidden}
+    .cal-cell.empty{border:none;background:transparent}
+    .cal-cell.today{border-color:#006DE2;box-shadow:inset 0 0 0 1px #006DE2}
+    .cal-daynum{font-size:11.5px;font-weight:700;color:#556;margin-bottom:4px}
+    .cal-cell.today .cal-daynum{color:#006DE2}
+    .cal-ev{font-size:10.5px;font-weight:600;border-radius:5px;padding:2px 6px;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+    .cal-more{font-size:10px;color:#8a909a;padding-left:3px;cursor:default}
+  </style>
+  <div class="card" style="margin-bottom:20px"><div class="card-h">
+      <h3>${monthLabel} 일정 <span class="sub">요청 마감 · 프로젝트 마일스톤 · 담당자 색</span></h3>
+      <span class="cal-toolbar"><button class="btn sm" id="cal-prev">‹</button><button class="btn sm" id="cal-today">이번 달</button><button class="btn sm" id="cal-next">›</button></span></div>
+    <div class="card-b">
+      <div class="cal-legend">${calLegend}</div>
+      <div class="cal-grid-head">${calHead}</div>
+      <div class="cal-grid">${calCells}</div>
+    </div></div>`;
 
-  <span class="eyebrow">담당자별 업무</span>
-  <div class="assign-grid">${assignCols}</div>`;
+  const shiftMonth = n => {
+    let [y, m] = dashMonth.split('-').map(Number); m += n;
+    if (m < 1) { m = 12; y--; } if (m > 12) { m = 1; y++; }
+    dashMonth = `${y}-${String(m).padStart(2, '0')}`; renderDashboard(main);
+  };
+  main.querySelector('#cal-prev').onclick = () => shiftMonth(-1);
+  main.querySelector('#cal-next').onclick = () => shiftMonth(1);
+  main.querySelector('#cal-today').onclick = () => { dashMonth = todayISO().slice(0, 7); renderDashboard(main); };
 }

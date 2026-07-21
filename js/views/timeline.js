@@ -56,6 +56,8 @@ function markerHtml(tid, mi, m) {
 }
 let _rangeStart = null;
 const msLeft = date => Math.round((new Date(date + 'T00:00:00') - new Date(_rangeStart + 'T00:00:00')) / 864e5) * DAY_W;
+/* 마커 드래그 상태(문서 리스너는 렌더마다 교체해 누수 방지) */
+let _dragMove = null, _dragUp = null, _lastDragEnd = 0;
 
 export function renderTimeline(main) {
   const db = store.db;
@@ -167,7 +169,9 @@ export function renderTimeline(main) {
   </div>
   <div class="card" style="padding:0;overflow:hidden">
     <div class="t2-scroll" id="t2-scroll">
-      <div class="t2-inner" style="width:${LAB_W + W}px">
+      <div class="t2-inner" style="width:${LAB_W + W}px;position:relative">
+        <div id="tl-hovcol" style="position:absolute;top:0;height:100%;width:${DAY_W}px;background:rgba(0,109,226,.07);border-left:1px solid rgba(0,109,226,.28);border-right:1px solid rgba(0,109,226,.28);pointer-events:none;display:none;z-index:1"></div>
+        <div id="tl-hovdate" style="position:absolute;top:3px;transform:translateX(-50%);background:#006DE2;color:#fff;font-size:10px;font-weight:700;padding:1px 7px;border-radius:7px;pointer-events:none;display:none;z-index:6;white-space:nowrap"></div>
         <div class="t2-row t2-head">
           <div class="t2-lab t2-corner"></div>
           <div class="t2-canvas t2-headcv" style="width:${W}px">
@@ -220,8 +224,9 @@ export function renderTimeline(main) {
     store.save(); renderTimeline(main);
   });
 
-  /* ── 마일스톤: 마커 클릭=수정, 빈 칸 클릭=추가 ── */
+  /* ── 마일스톤: 마커 클릭=수정, 빈 칸 클릭=추가 (드래그 직후 클릭은 무시) ── */
   main.querySelectorAll('[data-addms]').forEach(cv => cv.onclick = e => {
+    if (Date.now() - _lastDragEnd < 200) return; // 방금 드래그로 옮긴 경우
     const ms = e.target.closest('[data-ms]');
     if (ms) { const [tid, mi] = ms.dataset.ms.split(':'); return editMilestone(main, tid, +mi); }
     const rect = cv.getBoundingClientRect();
@@ -229,6 +234,58 @@ export function renderTimeline(main) {
     if (day < 0 || day >= totalDays) return;
     addMilestone(main, cv.dataset.addms, addDays(rangeStart, day));
   });
+
+  /* ── 호버: 마우스가 있는 날짜 열을 하이라이트 + 상단에 날짜 표시 ── */
+  const inner = main.querySelector('.t2-inner');
+  const hovcol = $('#tl-hovcol'), hovdate = $('#tl-hovdate');
+  const showHover = day => {
+    const left = LAB_W + day * DAY_W;
+    hovcol.style.left = left + 'px'; hovcol.style.display = 'block';
+    const d = addDays(rangeStart, day);
+    hovdate.textContent = `${+d.slice(5, 7)}/${+d.slice(8)}`;
+    hovdate.style.left = (left + DAY_W / 2) + 'px'; hovdate.style.display = 'block';
+  };
+  const hideHover = () => { hovcol.style.display = 'none'; hovdate.style.display = 'none'; };
+  inner.addEventListener('mousemove', e => {
+    if (drag) return; // 드래그 중엔 드래그 핸들러가 하이라이트를 갱신
+    const r = inner.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    if (x < LAB_W || x >= LAB_W + W) return hideHover();
+    showHover(Math.floor((x - LAB_W) / DAY_W));
+  });
+  inner.addEventListener('mouseleave', () => { if (!drag) hideHover(); });
+
+  /* ── 마커 드래그로 날짜 이동 ── */
+  if (_dragMove) { document.removeEventListener('mousemove', _dragMove); document.removeEventListener('mouseup', _dragUp); }
+  let drag = null;
+  main.querySelectorAll('.tl-ms').forEach(el => el.addEventListener('mousedown', e => {
+    e.preventDefault(); e.stopPropagation();
+    drag = { el, ms: el.dataset.ms, startX: e.clientX, origLeft: parseFloat(el.style.left) || 0, moved: false };
+    el.style.zIndex = 10; el.style.opacity = '.85'; el.style.cursor = 'grabbing';
+  }));
+  _dragMove = e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.startX;
+    if (Math.abs(dx) > 3) drag.moved = true;
+    const day = Math.max(0, Math.min(totalDays - 1, Math.round((drag.origLeft + dx) / DAY_W)));
+    drag.el.style.left = day * DAY_W + 'px';
+    showHover(day);
+  };
+  _dragUp = () => {
+    if (!drag) return;
+    const d = drag; drag = null;
+    d.el.style.opacity = ''; d.el.style.cursor = '';
+    hideHover();
+    if (!d.moved) { d.el.style.zIndex = 2; return; } // 순수 클릭 → 클릭 핸들러가 처리
+    _lastDragEnd = Date.now();
+    const [tid, mi] = d.ms.split(':');
+    const day = Math.max(0, Math.min(totalDays - 1, Math.round((parseFloat(d.el.style.left) || 0) / DAY_W)));
+    const t = store.db.tasks.find(x => x.id === tid);
+    if (t && t.milestones && t.milestones[+mi]) { t.milestones[+mi].date = addDays(rangeStart, day); store.save(); toast(`마커를 ${addDays(rangeStart, day).slice(5)}로 옮겼어요`); }
+    renderTimeline(main);
+  };
+  document.addEventListener('mousemove', _dragMove);
+  document.addEventListener('mouseup', _dragUp);
 }
 
 /* ── 마일스톤 추가/수정 ── */
