@@ -9,14 +9,12 @@ export function renderSettings(main) {
     <h1>설정</h1><p>AI 기능과 팀 알림을 연결해요. 키는 이 브라우저에만 저장됩니다. (팀 동기화는 자동 — 좌측 하단 배지에서 상태 확인)</p></div>
 
   <div class="grid2">
-    <div class="card"><div class="card-h"><h3>내 정보 · 팀원</h3></div><div class="card-b">
-      <div class="field"><label>내 이름 (문서 작성자·대시보드 인사에 표시)</label>
-        <div class="gt" style="padding:8px 2px">${esc(s.userName) || '<span class="muted">사내 로그인 후 디렉토리에서 자동으로 채워져요</span>'}</div></div>
-      <label style="font-size:11.5px;font-weight:600;color:var(--muted)">팀원 목록 <span style="font-weight:400">(사내 디렉토리 자동 동기화)</span></label>
+    <div class="card"><div class="card-h"><h3>디자인팀 구성원</h3></div><div class="card-b">
+      <p class="hint" style="margin-top:0">업무 보드에서 담당자로 지정할 수 있는 목록이에요 — 사내 디렉토리에서 자동 동기화돼요.</p>
       <div id="s-members" style="margin:8px 0">
         ${db.members.map(m => `<div class="goal-row" data-mid="${m.id}">
           <span class="gt">${esc(m.name)} <span class="muted" style="font-size:11px">${esc(m.role || '')}</span></span></div>`).join('')
-          || '<p class="hint">팀 동기화가 연결되면 디자인팀 구성원이 자동으로 채워져요</p>'}
+          || '<p class="hint">팀 동기화가 연결되면 자동으로 채워져요</p>'}
       </div>
       <p class="hint">입사·퇴사는 사내 디렉토리(data.constanthub.kr) 기준으로 반영돼요. 목록이 비어 있으면 좌측 하단 배지로 연결 상태를 확인해주세요.</p>
     </div></div>
