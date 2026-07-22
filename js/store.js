@@ -38,6 +38,7 @@ class Store {
     this.settings = loadJSON(LS_SET, { userName: '' });
     this.migrate();
     this.connected = false;   // Supabase 연결·인증 완료 여부
+    this._loaded = false;     // 최초 권위 pull 완료 여부 — 그 전엔 서버 쓰기 금지(오래된 캐시 보호)
     this.status = 'local';    // local | synced | syncing | error
     this.serverDetail = '';   // 로컬 모드인 이유 (배지 안내용)
     this.lastError = '';
@@ -159,6 +160,9 @@ class Store {
       this._cfgSnap = JSON.stringify(this.db.config || {});
       this._guardSeen = new Set((this.db.guardLog || []).map(g => g?.at).filter(Boolean));
       this.rebuildSnap();
+      // 최초 권위 pull: 그 전(부팅 중 캐시 기준 migrate/render)에 쌓인 대기 변경은 폐기.
+      // 서버 데이터가 진실 — 필요한 정규화는 아래 migrate가 새 데이터로 다시 수행해요.
+      if (!this._loaded) { this._pending = null; this._loaded = true; }
       localStorage.setItem(LS_DB, JSON.stringify(this.db));
       this.status = 'synced'; this.emit();
       this.syncDirectory(); // 사내 디렉토리에서 내 이름·팀원 목록 자동 반영 (비동기, 실패해도 무해)
@@ -229,7 +233,20 @@ class Store {
   /* ── 쓰기: 대기 중인 변경만 행 단위 upsert/delete ── */
   async push() {
     if (!this.connected || !this._pending) return;
+    if (!this._loaded) return; // 최초 권위 pull 전에는 서버 쓰기 금지 — 오래된 캐시가 서버를 덮어쓰는 사고 방지
     const batch = this._pending; this._pending = null;
+    // 안전장치: 표의 대부분을 한 번에 지우려는 삭제는 차단(데이터 보존). 정상 삭제는 1~2건, 카스케이드도 소수.
+    // 남는 행보다 많고(≥) 8건 이상이면 = 대량 wipe 의심 → 그 표 삭제만 스킵하고 경고(서버 원본은 유지).
+    for (const t of SYNC_KEYS) {
+      const ids = batch.deletes[t]; if (!ids || !ids.length) continue;
+      const remaining = (this.db[t] || []).length;
+      if (ids.length >= 8 && ids.length >= remaining) {
+        console.error(`[안전장치] ${TBL[t]} 대량 삭제 차단: ${ids.length}건 삭제 시도(남는 행 ${remaining}) — 스킵`);
+        delete batch.deletes[t];
+        this.lastError = `안전장치가 ${TBL[t]} 대량 삭제(${ids.length}건)를 막았어요 — 데이터는 보존됐어요. 새로고침 후 확인해주세요.`;
+        this._bulkBlocked = true;
+      }
+    }
     this.status = 'syncing'; this.emit();
     try {
       for (const t of SYNC_KEYS) {                       // 부모(projects)→자식 순서 upsert (FK 안전)
@@ -252,7 +269,10 @@ class Store {
           .upsert(batch.guards.map(g => ({ at: g.at, data: g })), { onConflict: 'at', ignoreDuplicates: true });
         if (error) throw new Error('로그 저장 실패: ' + error.message);
       }
-      this.status = 'synced'; this.emit();
+      // 대량 삭제를 막았으면 사용자에게 보이도록 error 상태로 남겨요(데이터는 이미 안전)
+      if (this._bulkBlocked) { this._bulkBlocked = false; this.status = 'error'; }
+      else { this.status = 'synced'; this.lastError = ''; }
+      this.emit();
     } catch (e) {
       console.error(e); this.lastError = String(e.message || e);
       // 실패분 복원 — 그 사이 쌓인 새 변경이 있으면 새 쪽이 이기도록 순서 유지
