@@ -56,12 +56,14 @@ const taskRow = t => `
 export function renderDashboard(main) {
   const db = store.db;
   const today = todayISO(), tomorrow = todayISO(1);
-  const open = db.tasks.filter(t => t.status !== 'done');
+  const INACTIVE = ['done', 'hold', 'rejected']; // 승인 대기·반려는 활성 업무에서 제외
+  const open = db.tasks.filter(t => !INACTIVE.includes(t.status));
   const todayTasks = open.filter(t => t.due === today || (t.status === 'doing' && (!t.due || t.due <= today)));
   const tomorrowTasks = open.filter(t => t.due === tomorrow);
   const confirm = open.filter(t => t.status === 'confirm');
   const requests = open.filter(t => t.kind === 'request' && t.status === 'req');
   const overdue = open.filter(t => t.due && t.due < today);
+  const holdCount = db.tasks.filter(t => t.status === 'hold').length;
 
   // 프로젝트 마일스톤 임박·최근 (−3 ~ +7일, 완료 하위업무 제외)
   const tlMarkers = store.db.config?.timelineMarkers || [];
@@ -94,7 +96,7 @@ export function renderDashboard(main) {
   const firstDow = new Date(cy, cm - 1, 1).getDay();
   const evByDate = {};
   const pushEv = (date, ev) => { if (String(date).slice(0, 7) !== dashMonth) return; (evByDate[date] = evByDate[date] || []).push(ev); };
-  db.tasks.filter(t => t.kind === 'request' && t.status !== 'done' && t.due)
+  db.tasks.filter(t => t.kind === 'request' && !INACTIVE.includes(t.status) && t.due)
     .forEach(t => pushEv(t.due, { label: t.title, color: colorOf(t.assignees), who: store.assigneeNames(t), route: '#/tasks', kind: '요청' }));
   db.projects.filter(p => !p.archived).forEach(p =>
     db.tasks.filter(t => t.kind === 'project' && t.project === p.id && t.tlStatus !== 'done')
@@ -125,6 +127,7 @@ export function renderDashboard(main) {
     <div class="d-stats">
       <div class="d-stat"><b>${todayTasks.length}</b><span>오늘 할 일</span></div>
       <div class="d-stat"><b>${requests.length}</b><span>요청 업무</span></div>
+      <div class="d-stat ${holdCount ? 'warn' : ''}" ${holdCount ? 'onclick="location.hash=\'#/tasks\'" style="cursor:pointer"' : ''} title="리드타임 부족으로 승인 대기 중인 요청"><b>${holdCount}</b><span>승인 대기</span></div>
       <div class="d-stat ${confirm.length ? 'warn' : ''}"><b>${confirm.length}</b><span>컨펌중</span></div>
       <div class="d-stat ${overdue.length ? 'warn' : ''}"><b>${overdue.length}</b><span>기한 초과</span></div>
       <div class="d-stat ${msAlerts.length ? 'warn' : ''}"><b>${msAlerts.length}</b><span>마일스톤 임박</span></div>

@@ -13,8 +13,9 @@ function bizDays(fromISO, toISO) {
   while (d < end) { d.setDate(d.getDate() + 1); const w = d.getDay(); if (w !== 0 && w !== 6) n++; }
   return n;
 }
+const INACTIVE = ['done', 'hold', 'rejected']; // 활성 업무 집계에서 제외(부하·알림·캘린더)
 function dueLoad(dueISO, exceptId) {
-  return store.db.tasks.filter(t => t.due === dueISO && t.status !== 'done' && t.id !== exceptId).length;
+  return store.db.tasks.filter(t => t.due === dueISO && !INACTIVE.includes(t.status) && t.id !== exceptId).length;
 }
 const NEXT = { req: 'doing', doing: 'confirm', confirm: 'done' };
 const NEXT_LABEL = { req: '진행 →', doing: '컨펌 요청 →', confirm: '완료 ✓' };
@@ -52,6 +53,8 @@ export function renderTasks(main, sub = '') {
     (!filter.assignee || (t.assignees || []).includes(filter.assignee)) &&
     (!filter.project || t.project === filter.project);
   const tasks = db.tasks.filter(match);
+  const holdList = tasks.filter(t => t.status === 'hold');
+  const rejectedList = tasks.filter(t => t.status === 'rejected');
 
   const cols = ORDER.map(st => {
     const list = tasks.filter(t => t.status === st)
@@ -75,8 +78,10 @@ export function renderTasks(main, sub = '') {
     <span style="flex:1"></span>
     <button class="btn sm" id="mng-project">프로젝트 관리</button>
   </div>
+  ${holdSection(holdList)}
   <div class="kanban k3">${cols}</div>
-  ${doneSection(tasks)}`;
+  ${doneSection(tasks)}
+  ${rejectedSection(rejectedList)}`;
 
   $('#new-task').onclick = () => editTask(null, true); // 신규 기본값: 요청 업무
   main.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => { filter.kind = b.dataset.kind; renderTasks(main, sub); });
@@ -113,6 +118,87 @@ export function renderTasks(main, sub = '') {
   });
 
   bindDoneSection(main, sub);
+
+  /* ── 승인 대기 / 반려 처리 (디자인팀만) ── */
+  main.querySelectorAll('[data-approve]').forEach(b => b.onclick = () => {
+    if (!store.isDesignTeam()) return toast('디자인팀만 승인할 수 있어요', true);
+    const t = store.db.tasks.find(x => x.id === b.dataset.approve); if (!t) return;
+    t.status = 'req'; delete t.rejectReason; delete t.rejectedAt; t.approvedAt = todayISO();
+    store.save(); renderTasks(main, sub);
+    store.notifyNewRequest(t).then(ok => toast(ok ? '승인 — 정식 등록하고 슬랙 알림을 보냈어요' : '승인했어요 (슬랙 알림은 실패)', !ok));
+  });
+  main.querySelectorAll('[data-reject]').forEach(b => b.onclick = () => {
+    if (!store.isDesignTeam()) return toast('디자인팀만 반려할 수 있어요', true);
+    const t = store.db.tasks.find(x => x.id === b.dataset.reject); if (!t) return;
+    const reason = prompt('반려 사유 (선택) — 요청자 참고용으로 남겨요', '');
+    if (reason === null) return; // 취소
+    t.status = 'rejected'; t.rejectReason = reason.trim(); t.rejectedAt = todayISO();
+    store.save(); renderTasks(main, sub);
+    if (store.slackWebhook) store.notifySlack([':x: *요청이 반려됐어요*', `*업무:* ${t.title}`, `*요청자:* ${t.requester || '미기재'}`, reason.trim() ? `*사유:* ${reason.trim()}` : ''].filter(Boolean).join('\n'));
+    toast('반려했어요 — 아래 반려 섹션에서 되돌릴 수 있어요');
+  });
+  main.querySelectorAll('[data-unreject]').forEach(b => b.onclick = () => {
+    if (!store.isDesignTeam()) return toast('디자인팀만 처리할 수 있어요', true);
+    const t = store.db.tasks.find(x => x.id === b.dataset.unreject); if (!t) return;
+    t.status = 'hold'; delete t.rejectReason; delete t.rejectedAt; store.save(); renderTasks(main, sub);
+  });
+  main.querySelectorAll('[data-rdel]').forEach(b => b.onclick = async () => {
+    if (!store.isDesignTeam()) return toast('디자인팀만 삭제할 수 있어요', true);
+    const t = store.db.tasks.find(x => x.id === b.dataset.rdel); if (!t) return;
+    if (!confirm('이 반려 건을 완전히 삭제할까요?')) return;
+    if (t.slackTs) await store.recallSlack(t);
+    store.db.tasks = store.db.tasks.filter(x => x.id !== b.dataset.rdel); store.save(); renderTasks(main, sub);
+    toast('삭제했어요');
+  });
+}
+
+/* ── 승인 대기 섹션 (리드타임 부족으로 hold된 요청) ── */
+function holdSection(list) {
+  if (!list.length) return '';
+  const canApprove = store.isDesignTeam();
+  return `<div class="card" style="margin-bottom:16px;border-color:#D97706;background:#D9770608">
+    <div class="card-h"><h3>⏳ 승인 대기 <span class="cnt">${list.length}</span></h3>
+      <span class="sub">리드타임이 짧아 일정 협의가 필요한 요청 · ${canApprove ? '검토 후 승인/반려' : '디자인팀 검토 대기'}</span></div>
+    <div class="card-b">
+      ${list.sort((a, b) => String(b.heldAt || '').localeCompare(String(a.heldAt || ''))).map(t => {
+        const lead = bizDays(t.requestedAt, t.due);
+        return `<div class="tk-row" style="align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--line-soft)">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:13.5px">${esc(t.title)}</div>
+            <div class="tk-meta" style="font-size:11.5px;margin-top:3px;display:flex;flex-wrap:wrap;gap:8px">
+              ${t.due ? `<b class="tk-dd warn">희망 ${t.due.slice(5).replace('-', '/')} · 영업일 ${lead}일</b>` : '<span class="muted">마감 미정</span>'}
+              <span>요청 ${esc(t.requester || '—')}</span>
+              ${(t.assignees || []).length ? `<span>담당 ${esc(store.assigneeNames(t))}</span>` : ''}
+            </div>
+            ${t.notes ? `<div class="muted" style="font-size:11.5px;margin-top:4px;white-space:pre-wrap">${esc(t.notes)}</div>` : ''}
+          </div>
+          ${canApprove ? `<div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn sm primary" data-approve="${t.id}">승인</button>
+            <button class="btn sm danger" data-reject="${t.id}">반려</button></div>`
+            : '<span class="tag gray" style="flex-shrink:0">검토 대기</span>'}
+        </div>`;
+      }).join('')}
+    </div></div>`;
+}
+
+/* ── 반려 섹션 (접이식 · 되돌리기/삭제) ── */
+function rejectedSection(list) {
+  if (!list.length) return '';
+  const canEdit = store.isDesignTeam();
+  return `<details class="done-sec" style="margin-top:14px">
+    <summary>반려 <span class="cnt">${list.length}건</span><span class="hint">되돌리거나 삭제</span></summary>
+    <div style="padding:2px 16px 14px">
+      ${list.sort((a, b) => String(b.rejectedAt || '').localeCompare(String(a.rejectedAt || ''))).map(t => `
+        <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line-soft)">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:13px">${esc(t.title)}</div>
+            <div class="muted" style="font-size:11.5px;margin-top:2px">요청 ${esc(t.requester || '—')}${t.due ? ` · 희망 ${t.due.slice(5)}` : ''}${t.rejectReason ? ` · 사유: ${esc(t.rejectReason)}` : ''}${t.rejectedAt ? ` · ${t.rejectedAt}` : ''}</div>
+          </div>
+          ${canEdit ? `<div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn sm" data-unreject="${t.id}">승인 대기로</button>
+            <button class="btn sm danger" data-rdel="${t.id}">삭제</button></div>` : ''}
+        </div>`).join('')}
+    </div></details>`;
 }
 
 function card(t) {
@@ -408,39 +494,23 @@ export function editTask(id, isRequest = false, preset = {}) {
 
       /* ── 요청 업무 가드레일 (신규 등록 시) ── */
       if (!id && data.kind === 'request') {
-        // 1) 리드타임 하드 블록: 요청일→마감일 영업일 3일 미만이면 등록 불가
+        // 1) 리드타임 부족(영업일 3일 미만): 차단하지 않고 '승인 대기(hold)'로 등록 → 디자인팀이 검토 후 승인/반려
         if (data.due && bizDays(data.requestedAt, data.due) < MIN_LEAD_BDAYS) {
-          // 반려 기록 (월간 트래킹용) — 같은 제목·마감 조합은 하루 1회만
-          const dup = store.db.guardLog.some(g => g.title === data.title && g.due === data.due && g.at?.slice(0, 10) === todayISO());
-          if (!dup) {
-            store.db.guardLog.push({ type: 'lead_block', at: new Date().toISOString(),
-              title: data.title, requester: data.requester || '', due: data.due,
-              leadDays: bizDays(data.requestedAt, data.due) });
-            store.save();
-          }
-          const box = q('#t-guard');
-          box.hidden = false;
-          box.className = 'guard-box hard';
-          box.innerHTML = `<b>⛔ 등록할 수 없어요 — 일정 사전 논의가 필요해요</b>
-            요청일부터 마감일까지 <b>영업일 ${bizDays(data.requestedAt, data.due)}일</b>이에요.
-            디자인팀 리소스 확보를 위해 <b>최소 영업일 ${MIN_LEAD_BDAYS}일</b> 이전에 요청해주셔야 해요.<br>
-            마감일 조정이 어렵다면 등록 전에 디자인팀과 일정을 먼저 협의해주세요.
-            <div class="guard-actions">
-              ${store.slackWebhook ? '<button class="btn sm" id="t-guard-slack">슬랙으로 협의 요청 보내기</button>' : ''}
-            </div>`;
-          box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          const gs = q('#t-guard-slack');
-          if (gs) gs.onclick = async () => {
-            await store.notifySlack([
-              ':raised_hand: *일정 협의가 필요한 요청이 있어요* (리드타임 부족으로 등록 보류)',
-              `*업무:* ${data.title}`,
-              `*요청자:* ${data.requester || '미기재'}`,
-              `*희망 마감일:* ${data.due} (영업일 ${bizDays(data.requestedAt, data.due)}일)`,
-              data.notes ? `*메모:* ${data.notes}` : ''
-            ].filter(Boolean).join('\n'));
-            toast('디자인팀 채널로 협의 요청을 보냈어요');
-          };
-          return;
+          const lead = bizDays(data.requestedAt, data.due);
+          const nt = { id: uid(), createdAt: new Date().toISOString(), ...data, status: 'hold', heldReason: 'lead_time', heldAt: new Date().toISOString() };
+          db.tasks.push(nt);
+          store.db.guardLog.push({ type: 'lead_hold', at: new Date().toISOString(),
+            title: data.title, requester: data.requester || '', due: data.due, leadDays: lead });
+          store.save(); closeModal();
+          store.notifySlack([
+            ':raised_hand: *일정 협의가 필요한 요청이 있어요* (리드타임 부족 — 승인 대기)',
+            `*업무:* ${data.title}`,
+            `*요청자:* ${data.requester || '미기재'}`,
+            `*희망 마감일:* ${data.due} (영업일 ${lead}일)`,
+            data.notes ? `*메모:* ${data.notes}` : ''
+          ].filter(Boolean).join('\n'));
+          toast('승인 대기함에 등록했어요 — 일정 협의 후 디자인팀이 승인/반려합니다');
+          window.dispatchEvent(new Event('hashchange')); return;
         }
         // 2) 부하 소프트 블록: 같은 마감일에 미완료 업무 3건 이상이면 확인 후 등록
         if (data.due) {
