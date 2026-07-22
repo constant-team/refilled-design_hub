@@ -105,10 +105,55 @@ function wrongHostGuard() {
   return true;
 }
 
+/* ── 새 배포 감지 → 최신 JS로 자동 새로고침 ──
+   열어둔 탭은 한 번 로드한 JS 모듈을 새로고침 전까지 메모리에 계속 써서 '옛 동작'이 남아요.
+   배포된 index.html의 버전(.app-ver)을 주기적으로 대조해, 다르면 안전할 때 자동 새로고침하고
+   편집 중(모달·입력 포커스)이면 방해하지 않고 배너로 안내해요. */
+const LOADED_VER = (document.querySelector('.app-ver')?.textContent || '').trim();
+let _updatePending = false;
+function safeToReload() {
+  const modalOpen = !document.getElementById('modal-root')?.hidden;
+  const el = document.activeElement;
+  const typing = el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName || '');
+  return !modalOpen && !typing;
+}
+function showUpdateBanner() {
+  if (document.getElementById('update-banner')) return;
+  const b = document.createElement('div');
+  b.id = 'update-banner';
+  b.style.cssText = 'position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9999;background:#111;color:#fff;padding:11px 16px;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.28);display:flex;align-items:center;gap:12px;font-size:13px;font-weight:600';
+  b.innerHTML = `🔄 새 버전이 배포됐어요 <button id="ub-reload" style="background:#2563EB;color:#fff;border:none;border-radius:8px;padding:6px 13px;font-weight:700;cursor:pointer">새로고침</button>`;
+  document.body.appendChild(b);
+  b.querySelector('#ub-reload').onclick = () => location.reload();
+}
+async function checkVersion() {
+  if (!LOADED_VER) return;
+  try {
+    const r = await fetch('/index.html', { cache: 'no-store' });
+    if (!r.ok) return;
+    const m = (await r.text()).match(/class="app-ver"[^>]*>([^<]+)</);
+    const latest = m && m[1].trim();
+    if (latest && latest !== LOADED_VER) {
+      _updatePending = true;
+      if (safeToReload()) location.reload(); else showUpdateBanner();
+    }
+  } catch { /* 네트워크 실패는 조용히 무시 */ }
+}
+function versionWatch() {
+  setTimeout(checkVersion, 4000);            // 부팅 직후 1회
+  setInterval(checkVersion, 5 * 60 * 1000);  // 5분마다
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    if (_updatePending && safeToReload()) location.reload(); // 잠깐 떠난 탭 복귀 시 자동 최신화
+    else checkVersion();
+  });
+}
+
 (async function boot() {
   if (wrongHostGuard()) return; // 비정식 주소면 여기서 중단(동기화 오류 노출 방지)
   authBox();
   syncBadge();
+  versionWatch();
   route(); // localStorage 캐시로 즉시 표시
   // Supabase 연결(브릿지 세션) 후 팀 데이터로 교체.
   // 재배포 직후 콜드스타트·세션 워밍업으로 첫 pull이 실패하면 오래된 캐시가 그대로 남으므로,
