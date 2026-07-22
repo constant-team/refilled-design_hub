@@ -11,6 +11,7 @@
  *   (tools/.env.migrate 에 SUPABASE_URL / SUPABASE_SERVICE_KEY 필요)
  */
 import { readFileSync } from 'node:fs';
+import { TBL, TO } from '../js/rowmap.js'; // 클라이언트와 동일 매퍼 재사용(관계형 *_v2)
 
 const DRY = process.argv.includes('--dry');
 const FROM = process.env.FROM || '2026-07-01';
@@ -116,8 +117,10 @@ async function sb(path, init = {}) {
   return r;
 }
 // 멤버(오너 매핑) + config(마커) 조회
+// 오너 이름→이메일 매핑: 구 members 테이블 사용(컷오버 후엔 members_legacy로 바꿔야 함).
+// 관계형에선 owner=이메일 id — 디렉토리가 원천이므로 로컬 미러 테이블은 없음.
 const members = (await (await sb('members?select=data')).json()).map(x => x.data);
-const ownerId = raw => { if (!raw) return ''; const m = members.find(mm => mm.name && (mm.name.includes(raw) || raw.includes(mm.name))); return m ? m.id : ''; };
+const ownerId = raw => { if (!raw) return ''; const m = members.find(mm => mm.name && (mm.name.includes(raw) || raw.includes(mm.name))); return m ? (m.email || m.id) : ''; };
 const appState = (await (await sb('app_state?key=eq.config&select=data')).json())[0];
 const config = appState?.data || {};
 config.timelineMarkers = config.timelineMarkers || [];
@@ -126,19 +129,19 @@ const markerId = name => { let m = config.timelineMarkers.find(x => x.name === n
 const projRows = [], taskRows = [];
 for (const p of projects) {
   const pid = 'pj_' + idOf(p.name);
-  projRows.push({ id: pid, data: { id: pid, name: p.name, color: '#006DE2', owner: ownerId(p.subs[0].owner) || null, source: 'csv' } });
+  projRows.push(TO.projects({ id: pid, name: p.name, color: '#006DE2', owner: ownerId(p.subs[0].owner) || null, source: 'csv' }));
   for (const s of p.subs) {
     const sid = 'tl_' + idOf(p.name + '|' + s.task);
-    taskRows.push({ id: sid, data: {
+    taskRows.push(TO.tasks({
       id: sid, kind: 'project', title: s.task, project: pid,
       assignees: ownerId(s.owner) ? [ownerId(s.owner)] : [], tlStatus: TL_STATUS(s.prog),
       milestones: s.ms.map(m => ({ date: m.date, typeId: markerId(markerName(m.text)) })).sort((a, b) => a.date < b.date ? -1 : 1),
       priority: '중간', requester: '', requestedAt: FROM, due: '', link: '', files: [], notes: s.detail || '', createdAt: new Date().toISOString(), source: 'csv',
-    } });
+    }));
   }
 }
 // config(마커) 먼저 저장 → projects → tasks
 await sb('app_state?on_conflict=key', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify([{ key: 'config', data: config }]) });
-await sb('projects?on_conflict=id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(projRows) });
-await sb('tasks?on_conflict=id', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(taskRows) });
+await sb(`${TBL.projects}?on_conflict=id`, { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(projRows) });
+await sb(`${TBL.tasks}?on_conflict=id`, { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify(taskRows) });
 console.log(`\n✅ 반영 완료 — 프로젝트 ${projRows.length} · 하위업무 ${taskRows.length}. 허브 새로고침 후 프로젝트 타임라인에서 확인하세요.`);

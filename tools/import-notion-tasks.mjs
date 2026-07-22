@@ -19,6 +19,7 @@
  *   IMPORT_STATUSES        — (선택) 콤마 구분 상태. 기본: "요청,시작 전,진행 중,컨펌요청"
  */
 import { readFileSync } from 'node:fs';
+import { TBL, TO } from '../js/rowmap.js'; // 클라이언트와 동일 매퍼 재사용(관계형 *_v2)
 
 const NOTION_API = 'https://api.notion.com/v1';
 const NOTION_VER = '2022-06-28';
@@ -151,10 +152,10 @@ function mapTask(page, body) {
   };
 }
 
-/* ── Supabase upsert (행 단위, tasks 테이블: {id, data}) ── */
+/* ── Supabase upsert (행 단위, tasks_v2: 컬럼 + extra) ── */
 async function upsertTasks(tasks) {
-  const rows = tasks.map(t => ({ id: String(t.id), data: t }));
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/tasks?on_conflict=id`, {
+  const rows = tasks.map(TO.tasks); // 평면 객체 → 컬럼/extra 분해 (notionId 등은 extra로)
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${TBL.tasks}?on_conflict=id`, {
     method: 'POST',
     headers: {
       apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
@@ -167,12 +168,12 @@ async function upsertTasks(tasks) {
 
 /* 허브 tasks에 이미 있는 notionId 집합 (누락분만 판별용) */
 async function fetchExistingNotionIds() {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/tasks?select=data`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${TBL.tasks}?select=extra`, {
     headers: { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` },
   });
   if (!res.ok) throw new Error(`Supabase 조회 실패 ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const rows = await res.json();
-  return new Set(rows.map(r => r.data?.notionId).filter(Boolean));
+  return new Set(rows.map(r => r.extra?.notionId).filter(Boolean)); // notionId는 extra에 있음
 }
 
 /* ── 실행 ── */

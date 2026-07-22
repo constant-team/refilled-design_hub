@@ -348,10 +348,8 @@ export function editTask(id, isRequest = false, preset = {}) {
       if (!pid || pid === '__new') return toast('삭제할 프로젝트를 먼저 선택해주세요', true);
       const p = db.projects.find(x => x.id === pid);
       const cnt = db.tasks.filter(x => x.project === pid).length;
-      if (!confirm(`"${p.name}" 프로젝트를 삭제할까요?\n연결된 업무 ${cnt}건은 삭제되지 않고 '미지정'으로 남아요.`)) return;
-      db.projects = db.projects.filter(x => x.id !== pid);
-      db.tasks.forEach(x => { if (x.project === pid) x.project = ''; });
-      store.save();
+      if (!confirm(`"${p.name}" 프로젝트를 삭제할까요?\n연결된 업무 ${cnt}건은 삭제되지 않고 '기타'로 남아요.`)) return;
+      store.deleteProject(pid);
       rebuildProjOptions('');
       toast(`"${p.name}" 프로젝트를 삭제했어요`);
     };
@@ -527,7 +525,7 @@ function manageProjects() {
       const pid = e.target.closest('[data-pid]').dataset.pid;
       const cnt = db.tasks.filter(t => t.project === pid).length;
       if (!confirm(`이 프로젝트를 삭제할까요?${cnt ? `\n연결된 업무 ${cnt}건은 '기타'로 남아요.` : ''}`)) return;
-      db.projects = db.projects.filter(p => p.id !== pid);
+      store.deleteProject(pid);
       b.querySelector('#p-rows').innerHTML = rows(); bindDel(b);
     });
     bindDel(body);

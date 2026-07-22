@@ -2,11 +2,12 @@ import { mentionizeNames } from './slackmap.js';
 import { supabase, supaState, initSupabase, serverConfig } from './supabase.js';
 import { fetchDirectory } from './directory.js';
 import { uploadFile } from './files.js';
+import { TBL, FROM, TO, SYNC_KEYS } from './rowmap.js';
 /* store.js — 단일 원천 데이터 스토어 (Supabase 행 단위 저장, 사내 표준)
    localStorage는 즉시 표시용 캐시 — 원본은 Supabase 도메인 테이블.
    저장은 변경된 행만 upsert/delete 해요 (통짜 JSON 저장 금지 — 동시 수정 유실 방지). */
 
-const LS_DB = 'rfhub_db_v1';
+const LS_DB = 'rfhub_db_v2'; // v2: 관계형 *_v2 매핑 전환 — 구 캐시(옛 멤버 id·형태) 무효화
 const LS_SET = 'rfhub_settings_v1';
 
 export const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -30,7 +31,7 @@ function loadJSON(key, fallback) {
 }
 
 class Store {
-  static ARR_KEYS = ['tasks', 'projects', 'members', 'rituals', 'archive', 'trends'];
+  // 동기화 테이블은 rowmap.SYNC_KEYS(projects/tasks/archive/rituals) — members는 디렉토리, trends는 폐기.
 
   constructor() {
     this.db = { ...DEFAULT_DB, ...loadJSON(LS_DB, {}) }; // 캐시 즉시 표시 → 연결 후 pull()이 원본으로 교체
@@ -56,7 +57,7 @@ class Store {
   _sig(item) { const { mt, ...rest } = item; return JSON.stringify(rest); }
   rebuildSnap() {
     this._snap = {};
-    Store.ARR_KEYS.forEach(k => (this.db[k] || []).forEach(it =>
+    SYNC_KEYS.forEach(k => (this.db[k] || []).forEach(it =>
       it && it.id && (this._snap[k + ':' + it.id] = this._sig(it))));
   }
 
@@ -65,7 +66,7 @@ class Store {
     const now = new Date().toISOString();
     const out = { upserts: {}, deletes: {}, config: false, guards: [] };
     let any = false;
-    for (const k of Store.ARR_KEYS) {
+    for (const k of SYNC_KEYS) {
       const cur = new Map((this.db[k] || []).filter(x => x && x.id).map(x => [String(x.id), x]));
       const changed = [], deleted = [];
       for (const [id, it] of cur) {
@@ -139,17 +140,18 @@ class Store {
     if (this._pending) await this.push(); // 안 올라간 변경 먼저 반영
     this.status = 'syncing'; this.emit();
     try {
-      const reads = Store.ARR_KEYS.map(t => supabase.from(t).select('data').order('id'));
+      const reads = SYNC_KEYS.map(t => supabase.from(TBL[t]).select('*').order('id'));
       reads.push(supabase.from('app_state').select('key,data'));
       reads.push(supabase.from('guard_log').select('data').order('at'));
       const results = await Promise.all(reads);
       for (const r of results) if (r.error) throw new Error(r.error.message);
 
       const fresh = { ...DEFAULT_DB };
-      Store.ARR_KEYS.forEach((t, i) => { fresh[t] = results[i].data.map(row => row.data); });
-      const states = Object.fromEntries(results[Store.ARR_KEYS.length].data.map(r => [r.key, r.data]));
+      SYNC_KEYS.forEach((t, i) => { fresh[t] = results[i].data.map(FROM[t]); }); // 컬럼+extra → 뷰 객체
+      fresh.members = this.db.members || []; // 멤버는 디렉토리가 원천(테이블 없음) — syncDirectory가 갱신
+      const states = Object.fromEntries(results[SYNC_KEYS.length].data.map(r => [r.key, r.data]));
       fresh.config = states.config || {};
-      fresh.guardLog = results[Store.ARR_KEYS.length + 1].data.map(r => r.data);
+      fresh.guardLog = results[SYNC_KEYS.length + 1].data.map(r => r.data);
       fresh.updatedAt = new Date().toISOString();
 
       this.db = fresh;
@@ -230,13 +232,14 @@ class Store {
     const batch = this._pending; this._pending = null;
     this.status = 'syncing'; this.emit();
     try {
-      for (const [t, items] of Object.entries(batch.upserts)) {
-        const { error } = await supabase.from(t)
-          .upsert(items.map(x => ({ id: String(x.id), data: x })));
+      for (const t of SYNC_KEYS) {                       // 부모(projects)→자식 순서 upsert (FK 안전)
+        const items = batch.upserts[t]; if (!items) continue;
+        const { error } = await supabase.from(TBL[t]).upsert(items.map(TO[t]));
         if (error) throw new Error(`${t} 저장 실패: ${error.message}`);
       }
-      for (const [t, ids] of Object.entries(batch.deletes)) {
-        const { error } = await supabase.from(t).delete().in('id', ids);
+      for (const t of [...SYNC_KEYS].reverse()) {         // 자식→부모 순서 delete
+        const ids = batch.deletes[t]; if (!ids) continue;
+        const { error } = await supabase.from(TBL[t]).delete().in('id', ids);
         if (error) throw new Error(`${t} 삭제 실패: ${error.message}`);
       }
       if (batch.config) {
@@ -263,13 +266,29 @@ class Store {
   /* 현재 접속자가 디자인팀인가 — /me teamName 기준. 알 수 없으면(로컬·디렉토리 미연결) 허용.
      ⚠️ UI 편의 게이트예요(하드 보안 아님) — 데이터는 로그인 전 구성원이 접근 가능(RLS authenticated). */
   isDesignTeam() { return this.me ? (this.me.teamName || '').includes('디자인') : true; }
-  member(id) { return this.db.members.find(m => m.id === id); }
+  member(id) {
+    if (!id) return undefined;
+    // 로스터(디자인팀) 우선 → 없으면 전 사내 디렉토리(이메일)로 폴백(팀이동자도 이름 해석, 완전 퇴사자만 '미지정')
+    return this.db.members.find(m => m.id === id)
+        || (this._directory || []).find(m => m.email === id || m.id === id);
+  }
   project(id) { return this.db.projects.find(p => p.id === id); }
   memberName(id) { return this.member(id)?.name || '미지정'; }
   projectName(id) { return this.project(id)?.name || '기타'; }
   assigneeNames(t) {
     const ids = t.assignees || (t.assignee ? [t.assignee] : []);
     return ids.map(id => this.memberName(id)).join(', ') || '미지정';
+  }
+
+  /* 프로젝트 삭제 — 연결 업무 처리 정책을 한 곳으로 통일 (구버전은 화면마다 제각각이었음).
+     기본은 null-out: 업무는 남기고 project 참조만 해제해 '기타'로 표시.
+     cascade:true면 하위 업무도 함께 삭제 (타임라인의 '프로젝트+하위업무' 모델). */
+  deleteProject(pid, { cascade = false } = {}) {
+    if (!pid) return;
+    this.db.projects = this.db.projects.filter(p => p.id !== pid);
+    if (cascade) this.db.tasks = this.db.tasks.filter(t => t.project !== pid);
+    else this.db.tasks.forEach(t => { if (t.project === pid) t.project = ''; });
+    this.save();
   }
 
   /* ── 구버전 데이터 → 신규 스키마 정규화 (메모리 내) ── */

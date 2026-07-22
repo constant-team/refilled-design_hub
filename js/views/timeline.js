@@ -478,9 +478,8 @@ function editProject(main, pid) {
     body.querySelector('#pj-del').onclick = () => {
       const cnt = store.db.tasks.filter(t => t.project === pid).length;
       if (!confirm(`"${p.name}" 프로젝트를 삭제할까요?${cnt ? `\n하위 업무 ${cnt}건도 함께 삭제돼요.` : ''}`)) return;
-      store.db.projects = store.db.projects.filter(x => x.id !== pid);
-      store.db.tasks = store.db.tasks.filter(t => t.project !== pid);
-      store.save(); closeModal(); renderTimeline(main); toast('삭제했어요');
+      store.deleteProject(pid, { cascade: true });
+      closeModal(); renderTimeline(main); toast('삭제했어요');
     };
   });
 }

@@ -13,6 +13,8 @@
  *  PULSE_DB      — (선택) 회의 데이터베이스 ID. 기본: 2cef27f09cd64a2497ab51aed5be4829
  */
 
+import { TBL, TO } from '../js/rowmap.js'; // 클라이언트와 동일 매퍼 재사용(관계형 *_v2)
+
 const NOTION_API = 'https://api.notion.com/v1';
 const NOTION_VER = '2022-06-28';
 const DEFAULT_DB = '2cef27f09cd64a2497ab51aed5be4829'; // C-Tribe "회의" DB
@@ -102,16 +104,16 @@ export default async function handler(req, res) {
     // 기존 펄스 문서(노션 미러링분)를 한 번에 조회 — id는 'np_' + 노션 페이지 UUID
     const ids = pages.map(p => 'np_' + p.id.replace(/-/g, ''));
     const existingRows = ids.length
-      ? await (await sb(`rituals?id=in.(${ids.map(encodeURIComponent).join(',')})&select=id,data`)).json()
+      ? await (await sb(`${TBL.rituals}?id=in.(${ids.map(encodeURIComponent).join(',')})&select=id,extra`)).json()
       : [];
-    const existingById = Object.fromEntries(existingRows.map(r => [r.id, r.data]));
+    const existingById = Object.fromEntries(existingRows.map(r => [r.id, r.extra])); // 문서 본문은 extra
 
     const upserts = [];
     for (const page of pages) {
       const id = 'np_' + page.id.replace(/-/g, '');
       const title = (page.properties?.['이름']?.title || []).map(t => t.plain_text).join('') || '주간 디자인 펄스';
-      const date = page.properties?.['미팅 시간']?.date?.start
-        || (page.created_time || '').slice(0, 10);
+      const date = (page.properties?.['미팅 시간']?.date?.start
+        || page.created_time || '').slice(0, 10); // date 컬럼용 YYYY-MM-DD 정규화
       const edited = page.last_edited_time || new Date().toISOString();
       const existing = existingById[id];
       if (existing && existing.mt === edited) continue; // 변경 없음
@@ -125,12 +127,12 @@ export default async function handler(req, res) {
         mt: edited, // 노션 최종 수정시각 기준 갱신
         data: { md, notionUrl: page.url || `https://www.notion.so/${page.id.replace(/-/g, '')}` },
       };
-      upserts.push({ id, data: doc });
+      upserts.push(TO.rituals(doc)); // {id, type, date, quarter, extra:doc}
       existing ? updated++ : added++;
     }
 
     if (upserts.length) {
-      await sb('rituals?on_conflict=id', {
+      await sb(`${TBL.rituals}?on_conflict=id`, {
         method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
         body: JSON.stringify(upserts),
       });
