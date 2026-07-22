@@ -10,6 +10,7 @@ import { esc, openModal, closeModal, toast, $ } from '../ui.js';
 
 let tab = 'files';   // files | insight
 let fq = '';         // 파일 탭 검색어
+let fTag = '';       // 파일 태그 필터 (태그 id)
 let iq = '';         // 인사이트 탭 검색어
 let iTag = '';       // 인사이트 태그 필터 (태그 id)
 
@@ -47,15 +48,66 @@ function tagChip(id, removable = false) {
   return `<span style="background:${t.color}22;color:${t.color};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:5px;margin:1px 3px 1px 0">${esc(t.name)}${removable ? `<button data-rmtag="${id}" style="background:none;border:none;color:inherit;cursor:pointer;font-size:12px;line-height:1;padding:0">✕</button>` : ''}</span>`;
 }
 
+/* ───────── 파일 태그 정의 (인사이트와 동일한 시스템, 단 회색 고정) ─────────
+   별도 풀(db.config.fileTags = [{id,name}])로 관리 — 인사이트 컬러 태그와 분리, 현재 회색 룩 유지. */
+const FILE_TAG_C = '#6B7280';
+function fileTagDefs() { const c = store.db.config || (store.db.config = {}); if (!Array.isArray(c.fileTags)) c.fileTags = []; return c.fileTags; }
+function fileTagById(id) { return fileTagDefs().find(t => t.id === id); }
+function ensureFileTagByName(name) {
+  const nm = (name || '').trim(); if (!nm) return null;
+  let t = fileTagDefs().find(x => x.name.toLowerCase() === nm.toLowerCase());
+  if (!t) { t = { id: uid(), name: nm }; fileTagDefs().push(t); }
+  return t.id;
+}
+function deleteFileTagDef(id) {
+  store.db.config.fileTags = fileTagDefs().filter(t => t.id !== id);
+  store.db.archive.filter(a => !isInsight(a)).forEach(a => { if (Array.isArray(a.tags) && a.tags.includes(id)) a.tags = a.tags.filter(x => x !== id); });
+  store.save();
+}
+/* 구 tags(쉼표 문자열) → tags(id 배열) 1회 마이그레이션 — 기존 데이터 보존, 이름 그대로 태그 정의 생성 */
+function migrateFileTags() {
+  let changed = false;
+  store.db.archive.filter(a => !isInsight(a)).forEach(a => {
+    if (!Array.isArray(a.tags)) {
+      a.tags = typeof a.tags === 'string' ? splitTags(a.tags).map(ensureFileTagByName).filter(Boolean) : [];
+      changed = true;
+    }
+  });
+  if (changed) store.save();
+}
+/* 회색 태그 칩 (선택 상자·드롭다운용). 표 안 칩은 기존 .tag.gray 그대로 유지 */
+function fileTagChip(id, removable = false) {
+  const t = fileTagById(id); if (!t) return '';
+  return `<span style="background:${FILE_TAG_C}18;color:${FILE_TAG_C};border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:5px;margin:1px 3px 1px 0">${esc(t.name)}${removable ? `<button data-rmtag="${id}" style="background:none;border:none;color:inherit;cursor:pointer;font-size:12px;line-height:1;padding:0">✕</button>` : ''}</span>`;
+}
+function fileTagFilterChips() {
+  const counts = {};
+  store.db.archive.filter(a => !isInsight(a)).forEach(a => (a.tags || []).forEach(id => { counts[id] = (counts[id] || 0) + 1; }));
+  const total = store.db.archive.filter(a => !isInsight(a)).length;
+  const allChip = `<button data-ftag="" class="tag ${fTag === '' ? 'blue' : 'gray'}" style="cursor:pointer;border:none;font:inherit;padding:3px 10px">전체 <b>${total}</b></button>`;
+  const chips = fileTagDefs().filter(t => counts[t.id]).sort((a, b) => counts[b.id] - counts[a.id]).map(t => {
+    const on = fTag === t.id;
+    return `<button data-ftag="${t.id}" style="cursor:pointer;border:1.5px solid ${on ? FILE_TAG_C : 'transparent'};background:${FILE_TAG_C}18;color:${FILE_TAG_C};border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:600">${esc(t.name)} <b>${counts[t.id]}</b></button>`;
+  }).join('');
+  return allChip + chips;
+}
+
 /* ───────── 최종 파일 아카이브 (기존) ───────── */
 function fileRows() {
   let list = store.db.archive.filter(a => !isInsight(a)).sort((a, b) => (b.date < a.date ? -1 : 1));
-  if (fq) { const k = fq.toLowerCase(); list = list.filter(a => (a.title + ' ' + (a.tags || '')).toLowerCase().includes(k)); }
+  if (fTag) list = list.filter(a => (a.tags || []).includes(fTag));
+  if (fq) {
+    const k = fq.toLowerCase();
+    list = list.filter(a => {
+      const names = (a.tags || []).map(id => fileTagById(id)?.name || '').join(' ');
+      return (a.title + ' ' + names + ' ' + (a.notes || '')).toLowerCase().includes(k);
+    });
+  }
   return list.map(a => `<tr>
       <td><a class="flink" href="${esc(a.url)}" target="_blank" rel="noopener">${esc(a.title)}</a>
         ${a.notes ? `<div class="muted" style="font-size:12px;margin-top:3px">${esc(a.notes)}</div>` : ''}</td>
       <td class="mono">${esc(a.version || '—')}</td>
-      <td>${splitTags(a.tags).map(t => `<span class="tag gray" style="margin:1px">${esc(t)}</span>`).join('')}</td>
+      <td>${(a.tags || []).map(id => { const t = fileTagById(id); return t ? `<span class="tag gray" style="margin:1px">${esc(t.name)}</span>` : ''; }).join('')}</td>
       <td>${esc(store.memberName(a.owner))}</td>
       <td class="mono">${a.date?.slice(5) || ''}</td>
       <td><button class="btn sm" data-fedit="${a.id}">수정</button></td>
@@ -67,8 +119,10 @@ function renderFilesTab(main) {
   <p class="hint" style="margin:2px 0 12px">최종 파일은 드라이브/NAS에 두고, 여기엔 링크와 맥락을 남겨요. "어디 있지?"를 없애는 목록입니다.</p>
   <div class="board-bar">
     <button class="btn primary" id="arc-add">+ 최종 파일 등록</button>
-    <input id="arc-q" placeholder="제목 · 태그 검색" value="${esc(fq)}" style="border:1px solid var(--line);border-radius:8px;padding:7px 11px;width:260px">
+    <button class="btn" id="arc-tags">🏷 태그 관리</button>
+    <input id="arc-q" placeholder="제목 · 태그 · 메모 검색" value="${esc(fq)}" style="border:1px solid var(--line);border-radius:8px;padding:7px 11px;width:260px">
   </div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px" id="arc-chips">${fileTagFilterChips()}</div>
   <div class="card"><div class="card-b" style="padding:0 6px">
     <table class="arc-table"><thead><tr>
       <th style="width:40%">파일</th><th>버전</th><th>태그</th><th>담당</th><th>날짜</th><th></th>
@@ -77,14 +131,17 @@ function renderFilesTab(main) {
 
   const bindEdit = () => main.querySelectorAll('[data-fedit]').forEach(b => b.onclick = () => editFile(b.dataset.fedit, main));
   $('#arc-add').onclick = () => editFile(null, main);
+  $('#arc-tags').onclick = () => manageFileTags(main);
   $('#arc-q').oninput = e => { fq = e.target.value; $('#arc-body').innerHTML = fileRows(); bindEdit(); };
+  main.querySelectorAll('[data-ftag]').forEach(b => b.onclick = () => { fTag = b.dataset.ftag; renderFilesTab(main); });
   bindEdit();
 }
 
 function editFile(id, main) {
   const db = store.db;
   const a = id ? db.archive.find(x => x.id === id)
-    : { title: '', url: '', project: '', version: 'v1.0', tags: '', owner: db.members[0]?.id || '', date: todayISO(), notes: '' };
+    : { title: '', url: '', project: '', version: 'v1.0', tags: [], owner: db.members[0]?.id || '', date: todayISO(), notes: '' };
+  let sel = Array.isArray(a.tags) ? [...a.tags] : [];
   openModal(`
     <h2>${id ? '파일 정보 수정' : '최종 파일 등록'}</h2>
     <div class="field"><label>파일 이름</label><input id="a-title" value="${esc(a.title)}" placeholder="예: cADPR Exo 상세페이지 메인비주얼_final"></div>
@@ -92,11 +149,13 @@ function editFile(id, main) {
     <div class="frow3">
       <div class="field"><label>버전</label><input id="a-ver" value="${esc(a.version)}"></div>
       <div class="field"><label>날짜</label><input type="date" id="a-date" value="${a.date}"></div>
-    </div>
-    <div class="frow">
-      <div class="field"><label>태그 (쉼표 구분)</label><input id="a-tags" value="${esc(a.tags)}" placeholder="배너, 누끼, 인쇄"></div>
       <div class="field"><label>담당자</label><select id="a-owner">
         ${db.members.map(m => `<option value="${m.id}" ${a.owner === m.id ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}</select></div>
+    </div>
+    <div class="field"><label>태그 (골라 쓰거나 입력해 추가)</label>
+      <div id="a-tags-sel" style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:6px"></div>
+      <input id="a-tags-input" placeholder="태그 검색 · 새 이름 입력 후 Enter" autocomplete="off">
+      <div id="a-tags-drop" style="display:flex;flex-wrap:wrap;gap:6px;border:1px solid var(--line);border-radius:8px;margin-top:5px;padding:8px;max-height:180px;overflow:auto"></div>
     </div>
     <div class="field"><label>메모</label><textarea id="a-notes">${esc(a.notes)}</textarea></div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
@@ -104,10 +163,52 @@ function editFile(id, main) {
       <button class="btn" data-close>취소</button>
       <button class="btn primary" id="a-save">저장</button></div>
   `, body => {
+    const selBox = body.querySelector('#a-tags-sel');
+    const input = body.querySelector('#a-tags-input');
+    const drop = body.querySelector('#a-tags-drop');
+    const renderSel = () => {
+      selBox.innerHTML = sel.map(idv => fileTagChip(idv, true)).join('') || '<span class="muted" style="font-size:11.5px">선택된 태그 없음</span>';
+      selBox.querySelectorAll('[data-rmtag]').forEach(b => b.onclick = () => { sel = sel.filter(x => x !== b.dataset.rmtag); renderSel(); renderDrop(); });
+    };
+    const renderDrop = () => {
+      const kw = input.value.trim().toLowerCase();
+      const opts = fileTagDefs().filter(t => !kw || t.name.toLowerCase().includes(kw));
+      const exact = fileTagDefs().some(t => t.name.toLowerCase() === kw);
+      const optChip = t => {
+        const on = sel.includes(t.id);
+        return `<span data-optid="${t.id}" title="클릭해 선택/해제" style="cursor:pointer;display:inline-flex;align-items:center;gap:5px;background:${FILE_TAG_C}18;color:${FILE_TAG_C};border:1.5px solid ${on ? FILE_TAG_C : 'transparent'};border-radius:999px;padding:3px 9px;font-size:12px;font-weight:600">
+          ${on ? '✓ ' : ''}${esc(t.name)}
+          <button data-deltag="${t.id}" title="태그 삭제" style="background:none;border:none;color:inherit;cursor:pointer;font-size:11px;line-height:1;padding:0;opacity:.65">✕</button>
+        </span>`;
+      };
+      const newChip = kw && !exact
+        ? `<span data-newtag style="cursor:pointer;display:inline-flex;align-items:center;background:${FILE_TAG_C}14;color:${FILE_TAG_C};border:1.5px dashed ${FILE_TAG_C};border-radius:999px;padding:3px 9px;font-size:12px;font-weight:600">+ "${esc(input.value.trim())}" 추가</span>`
+        : '';
+      drop.innerHTML = (opts.map(optChip).join('') + newChip) || '<span class="muted" style="font-size:11.5px">등록된 태그가 없어요 — 이름을 입력해 추가하세요</span>';
+      drop.querySelectorAll('[data-optid]').forEach(el => el.onclick = e => {
+        if (e.target.closest('[data-deltag]')) return;
+        const idv = el.dataset.optid; sel = sel.includes(idv) ? sel.filter(x => x !== idv) : [...sel, idv]; renderSel(); renderDrop();
+      });
+      drop.querySelectorAll('[data-deltag]').forEach(b => b.onclick = e => {
+        e.stopPropagation();
+        const t = fileTagById(b.dataset.deltag);
+        if (!confirm(`태그 "${t?.name || ''}"를 삭제할까요?\n모든 파일에서 제거되고 되돌릴 수 없어요.`)) return;
+        deleteFileTagDef(b.dataset.deltag); sel = sel.filter(x => x !== b.dataset.deltag);
+        renderSel(); renderDrop();
+      });
+      const nt = drop.querySelector('[data-newtag]');
+      if (nt) nt.onclick = () => { const idv = ensureFileTagByName(input.value); if (idv && !sel.includes(idv)) sel.push(idv); input.value = ''; store.save(); renderSel(); renderDrop(); };
+    };
+    input.oninput = renderDrop;
+    input.onkeydown = e => {
+      if (e.key === 'Enter') { e.preventDefault(); const nt = drop.querySelector('[data-newtag]'); if (nt) nt.click(); else { const f = drop.querySelector('[data-optid]'); f && f.click(); } }
+    };
+    renderSel(); renderDrop();
+
     body.querySelector('#a-save').onclick = () => {
       const v = s => body.querySelector(s).value.trim();
       if (!v('#a-title') || !v('#a-url')) return toast('이름과 링크는 필수예요', true);
-      const data = { title: v('#a-title'), url: v('#a-url'), project: a.project || '', version: v('#a-ver'), date: v('#a-date'), tags: v('#a-tags'), owner: v('#a-owner'), notes: v('#a-notes') };
+      const data = { title: v('#a-title'), url: v('#a-url'), project: a.project || '', version: v('#a-ver'), date: v('#a-date'), tags: sel, owner: v('#a-owner'), notes: v('#a-notes') };
       if (id) Object.assign(a, data); else db.archive.push({ id: uid(), ...data });
       store.save(); closeModal(); toast('저장했어요'); renderArchive(main);
     };
@@ -115,6 +216,38 @@ function editFile(id, main) {
       db.archive = db.archive.filter(x => x.id !== id);
       store.save(); closeModal(); toast('삭제했어요'); renderArchive(main);
     });
+  });
+}
+
+/* 파일 태그 관리 (인사이트 태그 관리와 동일 UX, 컬러 없이 회색 고정) */
+function manageFileTags(main) {
+  const rowsHtml = () => fileTagDefs().map(t => `
+    <div data-tagrow="${t.id}" style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      ${fileTagChip(t.id)}
+      <input class="t-name" value="${esc(t.name)}" style="flex:1;border:1px solid var(--line);border-radius:7px;padding:5px 8px;font-size:12.5px">
+      <button class="btn sm danger" data-tdel="${t.id}">삭제</button>
+    </div>`).join('') || '<div class="empty" style="padding:8px">아직 태그가 없어요</div>';
+  openModal(`
+    <h2>파일 태그 관리</h2>
+    <p class="hint" style="margin-top:0">이름을 바꾸면 모든 파일에 바로 반영돼요. 삭제하면 파일에서도 제거됩니다.</p>
+    <div id="tag-mgr">${rowsHtml()}</div>
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <input id="tnew" placeholder="새 태그 이름" style="flex:1;border:1px solid var(--line);border-radius:8px;padding:7px 10px">
+      <button class="btn" id="tadd">+ 추가</button>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn primary" id="tdone">완료</button></div>
+  `, body => {
+    const rebind = () => { body.querySelector('#tag-mgr').innerHTML = rowsHtml(); bind(); };
+    function bind() {
+      body.querySelectorAll('[data-tagrow]').forEach(row => {
+        const t = fileTagById(row.dataset.tagrow); if (!t) return;
+        row.querySelector('.t-name').onchange = e => { const nm = e.target.value.trim(); if (nm) { t.name = nm; store.save(); rebind(); } };
+        row.querySelector('[data-tdel]').onclick = () => { if (!confirm(`태그 "${t.name}"를 삭제할까요? 모든 파일에서 제거돼요.`)) return; deleteFileTagDef(t.id); rebind(); };
+      });
+    }
+    body.querySelector('#tadd').onclick = () => { const el = body.querySelector('#tnew'); const nm = el.value.trim(); if (!nm) return; ensureFileTagByName(nm); el.value = ''; store.save(); rebind(); };
+    body.querySelector('#tdone').onclick = () => { closeModal(); renderFilesTab(main); };
+    bind();
   });
 }
 
@@ -319,6 +452,7 @@ function manageTags(main) {
 /* ───────── 진입점 ───────── */
 export function renderArchive(main) {
   migrateInsightTags();
+  migrateFileTags();
   main.innerHTML = `
   <div class="page-head"><span class="eyebrow">Archive</span>
     <h1>아카이브</h1><p>최종 파일과 디자인팀 인사이트를 한 곳에 모아둬요.</p></div>
