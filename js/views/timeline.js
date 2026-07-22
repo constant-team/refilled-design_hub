@@ -431,7 +431,7 @@ function addProject(main) {
             <button class="btn sm danger ps-del">✕</button>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:5px;align-items:center">
-            ${s.ms.map((m, mi) => { const c = (markers().find(x => x.id === m.markerId) || {}).color || '#9AA1AC'; return `<span style="background:${c}22;color:${c};border-radius:999px;padding:2px 8px;font-size:11px;font-weight:700">${esc(mkName(m.markerId))} D+${m.off} <button class="ps-msdel" data-mi="${mi}" style="background:none;border:none;color:inherit;cursor:pointer;padding:0">✕</button></span>`; }).join('')}
+            ${s.ms.map((m, mi) => { const c = (markers().find(x => x.id === m.markerId) || {}).color || '#9AA1AC'; return `<span style="background:${c}22;color:${c};border-radius:999px;padding:2px 8px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:3px">${esc(mkName(m.markerId))} D+<input class="ps-msoff" type="number" min="0" data-mi="${mi}" value="${m.off}" title="D+일수 직접 수정" style="width:38px;border:none;background:rgba(255,255,255,.55);color:inherit;font:inherit;font-weight:700;text-align:center;border-radius:5px;padding:1px 2px"><button class="ps-msdel" data-mi="${mi}" style="background:none;border:none;color:inherit;cursor:pointer;padding:0">✕</button></span>`; }).join('')}
             <select class="ps-newmk" style="font-size:11px">${markers().map(m => `<option value="${m.id}">${esc(m.name)}</option>`).join('')}</select>
             <span style="font-size:11px">D+</span><input class="ps-newoff" type="number" min="0" value="0" style="width:52px">
             <button class="btn sm ps-msadd">+ 마일스톤</button>
@@ -443,6 +443,7 @@ function addProject(main) {
         row.querySelector('.ps-owner').onchange = e => subs[i].owner = e.target.value;
         row.querySelector('.ps-del').onclick = () => { subs.splice(i, 1); drawSubs(); };
         row.querySelectorAll('.ps-msdel').forEach(b => b.onclick = () => { subs[i].ms.splice(+b.dataset.mi, 1); drawSubs(); });
+        row.querySelectorAll('.ps-msoff').forEach(inp => inp.onchange = e => { subs[i].ms[+e.target.dataset.mi].off = Math.max(0, +e.target.value || 0); subs[i].ms.sort((a, b) => a.off - b.off); drawSubs(); });
         row.querySelector('.ps-msadd').onclick = () => { subs[i].ms.push({ markerId: row.querySelector('.ps-newmk').value, off: Math.max(0, +row.querySelector('.ps-newoff').value || 0) }); subs[i].ms.sort((a, b) => a.off - b.off); drawSubs(); };
       });
     };
